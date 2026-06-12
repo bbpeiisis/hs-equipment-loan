@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMC Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#141B4D;--navy-dark:#0d1235;--navy-light:#1e2870;--teal:#009B8D;--teal-light:#e0f5f3;--sky:#009CDC;--sky-light:#e0f4fd;--yellow:#FFD700;--yellow-light:#fffbe0;--orange:#F4831F;--orange-light:#fff3e0;--green:#C4D600;--green-light:#f6fae0;--purple:#C964CF;--gray:#C1C6C8;--red:#dc2626;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0f8;color:#222;min-height:100vh;}
+header{background:var(--navy);color:white;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--sky);}
+header .logo{width:6px;height:32px;background:var(--yellow);border-radius:2px;margin-right:12px;flex-shrink:0;}
+header .hd{display:flex;align-items:center;}
+header h1{font-size:16px;font-weight:700;}
+header p{font-size:11px;opacity:0.6;margin-top:1px;}
+.header-right{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.mobile-nav{display:none;background:var(--navy);padding:6px 10px;overflow-x:auto;white-space:nowrap;border-bottom:2px solid var(--sky);}
+.mobile-nav a{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;color:rgba(255,255,255,0.65);font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;margin-right:3px;}
+.mobile-nav a.active{background:rgba(255,255,255,0.15);color:white;}
+.layout{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 55px);}
+nav{background:var(--navy);padding:14px 0;}
+nav a{display:flex;align-items:center;gap:8px;padding:9px 16px;color:rgba(255,255,255,0.65);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+nav a:hover,nav a.active{background:rgba(255,255,255,0.1);color:white;}
+.nav-sec{padding:12px 16px 4px;font-size:10px;color:rgba(255,255,255,0.3);font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+main{padding:20px;overflow-x:auto;}
+h2{font-size:18px;font-weight:700;margin-bottom:3px;color:var(--navy);}
+.page-sub{font-size:12px;color:#666;margin-bottom:18px;}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.stat-card{background:white;border-radius:10px;padding:14px 16px;box-shadow:0 1px 3px rgba(20,27,77,0.08);border-left:4px solid var(--gray);}
+.stat-card.s-pending{border-left-color:var(--orange);}.stat-card.s-approved{border-left-color:var(--sky);}
+.stat-card.s-borrowed{border-left-color:var(--purple);}.stat-card.s-overdue{border-left-color:var(--red);}
+.stat-card .num{font-size:28px;font-weight:800;line-height:1;}.stat-card .lbl{font-size:11px;color:#666;margin-top:3px;}
+.stat-card.s-pending .num{color:var(--orange);}.stat-card.s-approved .num{color:var(--sky);}
+.stat-card.s-borrowed .num{color:var(--purple);}.stat-card.s-overdue .num{color:var(--red);}
+.card{background:white;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(20,27,77,0.08);margin-bottom:16px;}
+.card-title{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:8px 10px;background:#f5f5fa;color:#444;font-weight:700;font-size:11px;border-bottom:1px solid #e5e5f0;}
+td{padding:9px 10px;border-bottom:1px solid #f0f0f8;vertical-align:top;}
+tr:last-child td{border-bottom:none;}tr:hover td{background:#fafafe;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge-pending{background:var(--yellow-light);color:#7a4a00;}.badge-approved{background:var(--sky-light);color:#005a80;}
+.badge-rejected{background:#fee2e2;color:var(--red);}.badge-borrowed{background:#f3e5ff;color:#7b00ad;}
+.badge-returned{background:var(--teal-light);color:#005a55;}.badge-banned{background:#fee2e2;color:var(--red);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;white-space:nowrap;}
+.btn-primary{background:var(--navy);color:white;}.btn-primary:hover{background:var(--navy-light);}
+.btn-primary:disabled{background:var(--gray);cursor:not-allowed;}
+.btn-approve{background:var(--teal-light);color:#005a55;}.btn-approve:hover{background:#b2ebe0;}
+.btn-reject{background:#fee2e2;color:var(--red);}.btn-reject:hover{background:#fecaca;}
+.btn-borrowed{background:#f3e5ff;color:#7b00ad;}.btn-borrowed:hover{background:#e8d0ff;}
+.btn-returned{background:#f0f0f5;color:#444;}.btn-returned:hover{background:#e5e5ee;}
+.btn-warn{background:var(--orange-light);color:#7a3500;}.btn-warn:hover{background:#ffe0c0;}
+.btn-danger{background:var(--red);color:white;}.btn-danger:hover{background:#b91c1c;}
+.btn-sm{padding:4px 9px;font-size:11px;}
+.btn-copy{background:#f0fff4;color:#005a55;border:1px solid #86efac;}
+input,select,textarea{padding:7px 10px;border:1.5px solid #d5d5e5;border-radius:7px;font-size:12px;outline:none;transition:border-color 0.2s;background:white;font-family:inherit;}
+input:focus,select:focus,textarea:focus{border-color:var(--navy);}
+label{display:block;font-size:11px;font-weight:600;color:#444;margin-bottom:3px;}
+.field{margin-bottom:11px;}
+.alert{padding:9px 13px;border-radius:7px;font-size:12px;margin-bottom:11px;line-height:1.5;}
+.alert-error{background:#fee2e2;color:var(--red);}.alert-success{background:var(--teal-light);color:#005a55;}
+.alert-info{background:var(--sky-light);color:#005a80;}.alert-warn{background:var(--yellow-light);color:#7a4a00;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:100;}
+.modal{background:white;border-radius:12px;padding:24px;max-width:500px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:11px;}
+.modal-actions{display:flex;gap:8px;margin-top:14px;}.modal-actions .btn{flex:1;padding:9px;}
+.section{display:none;}.section.active{display:block;}
+.today-box{border-radius:8px;padding:11px 13px;margin-bottom:10px;}
+.today-box h4{font-size:12px;font-weight:700;margin-bottom:7px;}
+.today-box ul{list-style:none;font-size:11px;}.today-box ul li{padding:3px 0;}
+.today-borrow{background:var(--yellow-light);border:1px solid #fde68a;}.today-borrow h4{color:#7a4a00;}
+.today-return{background:var(--sky-light);border:1px solid #93c5fd;}.today-return h4{color:#005a80;}
+.today-overdue{background:#fee2e2;border:1px solid #fca5a5;}.today-overdue h4{color:var(--red);}
+.empty-state{text-align:center;padding:28px 18px;color:#aaa;font-size:12px;}
+.login-wrap{max-width:380px;margin:80px auto;background:white;border-radius:12px;padding:32px;box-shadow:0 4px 20px rgba(20,27,77,0.12);}
+.login-wrap h2{font-size:20px;font-weight:700;margin-bottom:4px;color:var(--navy);}
+.login-wrap p{font-size:12px;color:#666;margin-bottom:6px;}
+.slot-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:10px;}
+.spinner{width:13px;height:13px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.copy-box{background:#f5f5fa;border:1px solid #dde;border-radius:7px;padding:10px 13px;font-size:11px;font-family:monospace;line-height:1.8;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow-y:auto;margin:8px 0;}
+.quiz-row{display:flex;gap:8px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #f0f0f8;font-size:12px;}
+.quiz-row:last-child{border-bottom:none;}
+.tag-s{background:var(--sky-light);color:#005a80;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.tag-m{background:#f3e5ff;color:#7b00ad;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.tag-t{background:var(--teal-light);color:#005a55;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.setting-group{background:#fafafe;border-radius:10px;padding:14px;margin-bottom:12px;border:1.5px solid #e5e5f0;}
+.setting-group h4{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid #e5e5f0;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f8;gap:10px;}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:12px;font-weight:600;color:#333;}.setting-desc{font-size:11px;color:#888;margin-top:2px;}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-slider{position:absolute;inset:0;background:#ddd;border-radius:22px;transition:0.3s;cursor:pointer;}
+.toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.3s;}
+.toggle input:checked+.toggle-slider{background:var(--teal);}
+.toggle input:checked+.toggle-slider:before{transform:translateX(18px);}
+.equip-tag{display:inline-flex;align-items:center;gap:5px;background:var(--sky-light);color:#005a80;border:1px solid #81d4fa;padding:4px 9px;border-radius:20px;font-size:12px;margin:3px;}
+.equip-tag button{background:none;border:none;color:#005a80;cursor:pointer;font-size:14px;line-height:1;padding:0;}
+.blacklist-banner{background:#fff0f0;border:2px solid var(--red);border-radius:10px;padding:13px;margin-bottom:13px;}
+.blacklist-banner h4{color:var(--red);font-size:12px;font-weight:700;margin-bottom:5px;}
+.bl-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f0f0f8;gap:10px;flex-wrap:wrap;}
+.bl-row:last-child{border-bottom:none;}
+.md-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;gap:8px;font-size:11px;}
+.md-row:last-child{border-bottom:none;}.md-row span:first-child{color:#888;flex-shrink:0;}.md-row span:last-child{font-weight:600;text-align:right;}
+.data-action-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f8;gap:10px;flex-wrap:wrap;}
+.data-action-row:last-child{border-bottom:none;}
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr;}nav{display:none;}.mobile-nav{display:block;}
+  main{padding:12px;}.stat-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-card{padding:10px 12px;}.stat-card .num{font-size:22px;}
+  table{font-size:11px;}th,td{padding:6px 7px;}.btn{padding:5px 8px;font-size:11px;}
+  h2{font-size:15px;}.card{padding:12px 14px;}
+  .slot-form{grid-template-columns:1fr 1fr;}.slot-form button{grid-column:span 2;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <header><div class="hd"><div class="logo"></div><div><h1>DMC Admin</h1></div></div></header>
+  <div class="login-wrap">
+    <h2>Admin Login</h2>
+    <p style="margin-bottom:18px;">A one-time code will be sent to the admin email address.</p>
+    <div id="login-send-wrap">
+      <div id="login-err"></div>
+      <button class="btn btn-primary" onclick="adminSendOTP()" style="width:100%;padding:11px;font-size:13px;">
+        <span id="login-send-text">Send Login Code to Admin Email</span>
+        <span id="login-send-spinner" style="display:none"><span class="spinner"></span></span>
+      </button>
+    </div>
+    <div id="login-otp-wrap" style="display:none;">
+      <p style="margin-bottom:12px;color:#444;">Enter the 6-digit code sent to your admin email.</p>
+      <div class="field">
+        <input type="text" id="login-otp-input" maxlength="6" placeholder="1 2 3 4 5 6"
+          style="font-size:26px;letter-spacing:10px;text-align:center;width:100%;"
+          onkeydown="if(event.key==='Enter')adminVerifyOTP()">
+      </div>
+      <div id="login-otp-err"></div>
+      <button class="btn btn-primary" onclick="adminVerifyOTP()" style="width:100%;padding:11px;font-size:13px;">
+        <span id="login-verify-text">Verify & Log In</span>
+        <span id="login-verify-spinner" style="display:none"><span class="spinner"></span></span>
+      </button>
+      <button class="btn btn-returned" onclick="resetLoginForm()" style="width:100%;margin-top:8px;">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none;">
+  <header>
+    <div class="hd"><div class="logo"></div><div><h1>DMC Admin Dashboard</h1><p>Digital Media Centre · Equipment Loan Management</p></div></div>
+    <div class="header-right">
+      <button class="btn btn-returned btn-sm" onclick="loadAll()">⟳ Refresh</button>
+      <button class="btn btn-reject btn-sm" onclick="doLogout()">Log Out</button>
+    </div>
+  </header>
+  <div class="mobile-nav" id="mobile-nav">
+    <a onclick="showSec('overview')" class="active" id="mnav-overview">📊 Home</a>
+    <a onclick="showSec('applications')" id="mnav-applications">📋 Apps</a>
+    <a onclick="showSec('tasks')" id="mnav-tasks">📬 Emails</a>
+    <a onclick="showSec('blacklist')" id="mnav-blacklist">🚫 Blacklist</a>
+    <a onclick="showSec('slots')" id="mnav-slots">📅 Dates</a>
+    <a onclick="showSec('quiz')" id="mnav-quiz">📝 Quiz</a>
+    <a onclick="showSec('teams')" id="mnav-teams">👥 Teams</a>
+    <a onclick="showSec('settings')" id="mnav-settings">⚙️ Settings</a>
+  </div>
+  <div class="layout">
+    <nav>
+      <div class="nav-sec">Overview</div>
+      <a onclick="showSec('overview')" id="nav-overview" class="active">📊 Dashboard</a>
+      <a onclick="showSec('applications')" id="nav-applications">📋 Applications</a>
+      <div class="nav-sec">Tasks</div>
+      <a onclick="showSec('tasks')" id="nav-tasks">📬 Pending Emails</a>
+      <a onclick="showSec('blacklist')" id="nav-blacklist">🚫 Blacklist</a>
+      <div class="nav-sec">Manage</div>
+      <a onclick="showSec('slots')" id="nav-slots">📅 Loan Dates</a>
+      <a onclick="showSec('quiz')" id="nav-quiz">📝 Quiz Editor</a>
+      <a onclick="showSec('teams')" id="nav-teams">👥 Teams</a>
+      <a onclick="showSec('settings')" id="nav-settings">⚙️ System Settings</a>
+    </nav>
+    <main>
+
+      <!-- OVERVIEW -->
+      <div class="section active" id="sec-overview">
+        <h2>Dashboard</h2><p class="page-sub">Today's activity and pending actions</p>
+        <div class="stat-row">
+          <div class="stat-card s-pending"><div class="num" id="st-pending">—</div><div class="lbl">Pending Review</div></div>
+          <div class="stat-card s-approved"><div class="num" id="st-approved">—</div><div class="lbl">Approved (To Borrow)</div></div>
+          <div class="stat-card s-borrowed"><div class="num" id="st-borrowed">—</div><div class="lbl">Currently Borrowed</div></div>
+          <div class="stat-card s-overdue"><div class="num" id="st-overdue">—</div><div class="lbl">Overdue ⚠️</div></div>
+        </div>
+        <div class="card"><div class="card-title">📅 Today's Activity</div><div id="today-content"><div class="empty-state">Loading...</div></div></div>
+        <div class="card"><div class="card-title">🔔 Pending Applications<span><button class="btn btn-primary btn-sm" onclick="showSec('applications')">View All →</button></span></div><div id="overview-pending"></div></div>
+        <div class="card"><div class="card-title">🚫 Overdue — Action Required<span><button class="btn btn-warn btn-sm" onclick="showSec('blacklist')">Manage →</button></span></div><div id="overview-overdue-bl"></div></div>
+      </div>
+
+      <!-- APPLICATIONS -->
+      <div class="section" id="sec-applications">
+        <h2>Applications</h2><p class="page-sub">Review and manage equipment loan applications</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <div><label>Status</label><select id="f-status" onchange="filterApps()"><option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="borrowed">Borrowed</option><option value="returned">Returned</option><option value="rejected">Rejected</option></select></div>
+          <div><label>Module</label><select id="f-module" onchange="filterApps()"><option value="">All Modules</option></select></div>
+          <div style="flex:1;"><label>Search</label><input id="f-search" placeholder="Email, team..." oninput="filterApps()" style="width:100%;"></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table><thead><tr><th>Module</th><th>Group</th><th>Applicant</th><th>Equipment</th><th>Borrow</th><th>Return</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="apps-tbody"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody></table>
+        </div>
+      </div>
+
+      <!-- PENDING EMAILS -->
+      <div class="section" id="sec-tasks">
+        <h2>Pending Email Tasks</h2>
+        <p class="page-sub">Copy email addresses and send notifications manually. All group members included.</p>
+        <div class="card"><div class="card-title">📦 Approved — Waiting to Borrow<span><button class="btn btn-copy btn-sm" onclick="exportEmails('approved')">📋 Export</button></span></div><div id="task-approved"><div class="empty-state">Loading...</div></div></div>
+        <div class="card"><div class="card-title">✗ Rejected — Notify Students<span><button class="btn btn-copy btn-sm" onclick="exportEmails('rejected')">📋 Export</button></span></div><div id="task-rejected"><div class="empty-state">Loading...</div></div></div>
+        <div class="card"><div class="card-title">🔄 Due to Return Today<span><button class="btn btn-copy btn-sm" onclick="exportEmails('return-today')">📋 Export</button></span></div><div id="task-return-today"><div class="empty-state">Loading...</div></div></div>
+        <div class="card"><div class="card-title">⚠️ Overdue<span><button class="btn btn-copy btn-sm" onclick="exportEmails('overdue')">📋 Export</button></span></div><div id="task-overdue"><div class="empty-state">Loading...</div></div></div>
+      </div>
+
+      <!-- BLACKLIST -->
+      <div class="section" id="sec-blacklist">
+        <h2>Blacklist</h2><p class="page-sub">Groups with overdue returns. Banned groups cannot submit new applications.</p>
+        <div class="card"><div class="card-title">⚠️ Overdue Groups — Action Required<button class="btn btn-primary btn-sm" onclick="loadBlacklist()">⟳ Refresh</button></div><div id="overdue-groups"><div class="empty-state">Loading...</div></div></div>
+        <div class="card"><div class="card-title">🚫 Current Blacklist<button class="btn btn-returned btn-sm" onclick="loadBlacklist()">⟳ Refresh</button></div><div id="blacklist-content"><div class="empty-state">Loading...</div></div></div>
+      </div>
+
+      <!-- LOAN DATES -->
+      <div class="section" id="sec-slots">
+        <h2>Loan Dates</h2><p class="page-sub">Set available borrowing dates for students.</p>
+        <div class="card">
+          <div class="card-title">Add Available Date</div>
+          <div class="slot-form">
+            <div><label>Date</label><input type="date" id="new-slot-date" style="width:100%;"></div>
+            <div><label>Max Simultaneous Loans</label><input type="number" id="new-slot-max" value="3" min="1" max="20" style="width:100%;"></div>
+            <button class="btn btn-primary" onclick="addSlot()" style="align-self:end;height:34px;">Add</button>
+          </div>
+          <div id="slot-msg"></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table><thead><tr><th>Date</th><th>Max</th><th>Booked</th><th>Open?</th><th>Delete</th></tr></thead>
+          <tbody id="slots-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- QUIZ EDITOR -->
+      <div class="section" id="sec-quiz">
+        <h2>Quiz Editor</h2><p class="page-sub">Load from template or add/edit/delete individual questions.</p>
+        <div class="card">
+          <div class="card-title">
+            <span>Question Bank <span id="quiz-count" style="font-size:11px;color:#888;font-weight:400;"></span></span>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="showAddQuestion()">+ Add Question</button>
+              <button class="btn btn-returned btn-sm" onclick="loadQuizToDb()">⟳ Reload from Template</button>
+            </div>
+          </div>
+          <div id="quiz-load-msg"></div>
+          <div style="margin-bottom:10px;"><select id="qf-type" onchange="filterQuizList()"><option value="">All Types</option><option value="single">Single choice</option><option value="multi">Multiple choice</option><option value="truefalse">True/False</option></select></div>
+          <div id="quiz-list"></div>
+        </div>
+      </div>
+
+      <!-- TEAMS -->
+      <div class="section" id="sec-teams">
+        <h2>Teams & Students</h2><p class="page-sub">Click any row to expand full member details.</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <div><label>Module</label><select id="team-module-filter" onchange="filterTeams()"><option value="">All Modules</option></select></div>
+          <div style="flex:1;"><label>Search</label><input id="team-search" placeholder="Name, email, student ID..." oninput="filterTeams()" style="width:100%;"></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table><thead><tr><th>Module</th><th>Group</th><th>Members</th><th>Quiz</th><th>Application</th></tr></thead>
+          <tbody id="teams-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="section" id="sec-settings">
+        <h2>System Settings</h2><p class="page-sub">Changes take effect immediately for new submissions.</p>
+        <div id="settings-content"><div class="empty-state">Loading...</div></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Action Modal -->
+<div class="modal-overlay" id="action-modal" style="display:none;">
+  <div class="modal">
+    <h3 id="modal-title">Confirm Action</h3>
+    <p id="modal-desc" style="font-size:12px;color:#666;margin-bottom:11px;"></p>
+    <div><label>Note to student (optional)</label><textarea id="modal-note" rows="2" style="width:100%;margin-top:3px;"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-returned" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-confirm-btn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Blacklist Modal -->
+<div class="modal-overlay" id="bl-modal" style="display:none;">
+  <div class="modal">
+    <h3>Add to Blacklist</h3>
+    <p id="bl-modal-desc" style="font-size:12px;color:#666;margin-bottom:11px;"></p>
+    <div class="field"><label>Ban Duration</label><select id="bl-duration" style="width:100%;"><option value="7">1 week (7 days)</option><option value="14">2 weeks (14 days)</option><option value="30">1 month (30 days)</option><option value="0">Permanent</option></select></div>
+    <div class="field"><label>Reason</label><textarea id="bl-reason" rows="2" style="width:100%;"></textarea></div>
+    <div id="bl-modal-err"></div>
+    <div class="modal-actions">
+      <button class="btn btn-returned" onclick="document.getElementById('bl-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmBlacklist()">Add to Blacklist</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email Export Modal -->
+<div class="modal-overlay" id="export-modal" style="display:none;">
+  <div class="modal">
+    <h3 id="export-title">Email Addresses</h3>
+    <div class="copy-box" id="export-content"></div>
+    <div style="display:flex;gap:8px;margin-top:11px;">
+      <button class="btn btn-copy" onclick="copyEmails()" style="flex:1;">📋 Copy All</button>
+      <button class="btn btn-returned" onclick="document.getElementById('export-modal').style.display='none'" style="flex:1;">Close</button>
+    </div>
+    <div id="copy-msg" style="margin-top:7px;"></div>
+  </div>
+</div>
+
+<!-- Quiz Modal -->
+<div class="modal-overlay" id="quiz-modal" style="display:none;">
+  <div class="modal">
+    <h3 id="qmodal-title">Add Question</h3>
+    <div class="field"><label>Question</label><textarea id="q-text" rows="3" style="width:100%;margin-top:3px;"></textarea></div>
+    <div class="field"><label>Type</label><select id="q-type" onchange="renderOptionFields()" style="width:100%;margin-top:3px;"><option value="single">Single choice</option><option value="multi">Multiple choice</option><option value="truefalse">True/False</option></select></div>
+    <div id="q-options-wrap"></div>
+    <div class="field"><label>Correct Answer(s) <small style="color:#aaa;font-weight:400;">(e.g. 0 or 0,2)</small></label><input type="text" id="q-correct" style="width:100%;margin-top:3px;"></div>
+    <div id="qmodal-err"></div>
+    <div class="modal-actions">
+      <button class="btn btn-returned" onclick="closeQuizModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveQuestion()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Data Delete Modal -->
+<div class="modal-overlay" id="data-modal" style="display:none;">
+  <div class="modal">
+    <h3>Confirm Delete</h3>
+    <p id="data-modal-desc" style="font-size:12px;color:#666;margin-bottom:11px;"></p>
+    <div class="field"><label>Type <strong>DELETE</strong> to confirm</label><input type="text" id="data-confirm-input" style="width:100%;margin-top:3px;" placeholder="DELETE"></div>
+    <div id="data-modal-err"></div>
+    <div class="modal-actions">
+      <button class="btn btn-returned" onclick="document.getElementById('data-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDataDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://kalboeaqcrscqtgvrusd.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthbGJvZWFxY3JzY3F0Z3ZydXNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NjkzMjUsImV4cCI6MjA5NjA0NTMyNX0.xQZ6y7kPXtDhtDVmUPgDwpbPBpgtHN94OBF974X8kLE';
+const FN_URL='https://kalboeaqcrscqtgvrusd.supabase.co/functions/v1/admin-actions';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let adminToken=null;
+let allApps=[],allTeams=[],allStudents=[],allQuestions=[],sysSettings={};
+let pendingAction=null,editingQId=null,pendingBlTeamId=null,pendingDataAction=null;
+
+// ── EDGE FUNCTION CALL ──
+async function fn(body){
+  const payload={...body};
+  if(adminToken)payload.token=adminToken;
+  const r=await fetch(FN_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_KEY}`},
+    body:JSON.stringify(payload)
+  });
+  return r.json();
+}
+
+// ── LOGIN ──
+function setLoadingBtn(base,on){
+  const t=document.getElementById(base+'-text'),s=document.getElementById(base+'-spinner');
+  if(t)t.style.display=on?'none':'';if(s)s.style.display=on?'':'none';
+  const b=t&&t.closest('button');if(b)b.disabled=on;
+}
+function resetLoginForm(){
+  document.getElementById('login-send-wrap').style.display='';
+  document.getElementById('login-otp-wrap').style.display='none';
+  document.getElementById('login-err').innerHTML='';
+  document.getElementById('login-otp-err').innerHTML='';
+  document.getElementById('login-otp-input').value='';
+}
+async function adminSendOTP(){
+  setLoadingBtn('login-send',true);
+  document.getElementById('login-err').innerHTML='';
+  const r=await fn({action:'send_admin_otp'});
+  setLoadingBtn('login-send',false);
+  if(r.error){document.getElementById('login-err').innerHTML=`<div class="alert alert-error">${r.error}</div>`;return;}
+  document.getElementById('login-send-wrap').style.display='none';
+  document.getElementById('login-otp-wrap').style.display='';
+  setTimeout(()=>document.getElementById('login-otp-input').focus(),100);
+}
+async function adminVerifyOTP(){
+  const code=document.getElementById('login-otp-input').value.trim();
+  document.getElementById('login-otp-err').innerHTML='';
+  if(code.length!==6){document.getElementById('login-otp-err').innerHTML='<div class="alert alert-error">Please enter the 6-digit code.</div>';return;}
+  setLoadingBtn('login-verify',true);
+  const r=await fn({action:'verify_admin_otp',code});
+  setLoadingBtn('login-verify',false);
+  if(!r.valid){
+    const msg=r.reason==='Expired'?'Code expired. Please request a new one.':'Wrong code. Please try again.';
+    document.getElementById('login-otp-err').innerHTML=`<div class="alert alert-error">${msg}</div>`;
+    return;
+  }
+  adminToken=r.token;
+  sessionStorage.setItem('dmc_admin_token',adminToken);
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  loadAll();
+}
+function doLogout(){
+  adminToken=null;sessionStorage.removeItem('dmc_admin_token');
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('login-screen').style.display='block';
+  resetLoginForm();
+}
+// Restore session on page load
+window.addEventListener('load',()=>{
+  const t=sessionStorage.getItem('dmc_admin_token');
+  if(t){adminToken=t;document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='block';loadAll();}
+});
+
+// ── NAV ──
+function showSec(name){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  document.querySelectorAll('nav a,.mobile-nav a').forEach(a=>a.classList.remove('active'));
+  const nd=document.getElementById('nav-'+name),mn=document.getElementById('mnav-'+name);
+  if(nd)nd.classList.add('active');if(mn)mn.classList.add('active');
+  const loaders={applications:loadApps,slots:loadSlots,quiz:loadQuizList,teams:loadTeams,tasks:loadTasks,blacklist:loadBlacklist,settings:loadSettings};
+  if(loaders[name])loaders[name]();
+}
+async function loadAll(){await Promise.all([loadStats(),loadTodayActivity(),loadOverviewPending(),loadOverdueForBl()]);}
+
+// ── READ DATA (via anon key — read-only is fine) ──
+async function loadStats(){
+  const today=new Date().toISOString().slice(0,10);
+  const{data}=await sb.from('loan_applications').select('status,return_date');
+  if(!data)return;
+  const c=s=>data.filter(d=>d.status===s).length;
+  document.getElementById('st-pending').textContent=c('pending');
+  document.getElementById('st-approved').textContent=c('approved');
+  document.getElementById('st-borrowed').textContent=c('borrowed');
+  document.getElementById('st-overdue').textContent=data.filter(d=>d.status==='borrowed'&&d.return_date<today).length;
+}
+async function loadTodayActivity(){
+  const today=new Date().toISOString().slice(0,10);
+  const{data:borrow}=await sb.from('loan_applications').select('applicant_email,teams(team_name,module)').eq('status','approved').eq('borrow_date',today);
+  const{data:ret}=await sb.from('loan_applications').select('applicant_email,teams(team_name,module)').eq('status','borrowed').eq('return_date',today);
+  const{data:over}=await sb.from('loan_applications').select('applicant_email,return_date,teams(team_name,module)').eq('status','borrowed').lt('return_date',today);
+  let html='';
+  if(borrow?.length)html+=`<div class="today-box today-borrow"><h4>📦 Coming to borrow today (${borrow.length})</h4><ul>${borrow.map(a=>`<li>→ [${a.teams?.module||''}] ${a.teams?.team_name||''} · ${a.applicant_email}</li>`).join('')}</ul></div>`;
+  if(ret?.length)html+=`<div class="today-box today-return"><h4>🔄 Due to return today (${ret.length})</h4><ul>${ret.map(a=>`<li>← [${a.teams?.module||''}] ${a.teams?.team_name||''} · ${a.applicant_email}</li>`).join('')}</ul></div>`;
+  if(over?.length)html+=`<div class="today-box today-overdue"><h4>⚠️ Overdue (${over.length})</h4><ul>${over.map(a=>`<li>❗ [${a.teams?.module||''}] ${a.teams?.team_name||''} · due ${a.return_date}</li>`).join('')}</ul></div>`;
+  if(!html)html='<div class="empty-state">No activity today 🎉</div>';
+  document.getElementById('today-content').innerHTML=html;
+}
+async function loadOverviewPending(){
+  const{data}=await sb.from('loan_applications').select('*,teams(team_name,module)').eq('status','pending').order('created_at').limit(5);
+  document.getElementById('overview-pending').innerHTML=!data?.length?'<div class="empty-state">No pending applications.</div>'
+    :`<table><thead><tr><th>Module</th><th>Group</th><th>Applicant</th><th>Borrow</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(a=>`<tr><td>${a.teams?.module||'—'}</td><td>${a.teams?.team_name||'—'}</td><td>${a.applicant_email}</td><td>${a.borrow_date}</td>
+    <td><button class="btn btn-approve btn-sm" onclick="openModal('${a.id}','approve')">✓ Approve</button> <button class="btn btn-reject btn-sm" onclick="openModal('${a.id}','reject')">✗ Reject</button></td></tr>`).join('')}
+    </tbody></table>`;
+}
+async function loadOverdueForBl(){
+  const today=new Date().toISOString().slice(0,10);
+  const{data:over}=await sb.from('loan_applications').select('id,team_id,return_date,teams(team_name,module)').eq('status','borrowed').lt('return_date',today);
+  if(!over?.length){document.getElementById('overview-overdue-bl').innerHTML='<div class="empty-state">No overdue items. 🎉</div>';return;}
+  const{data:bl}=await sb.from('blacklist').select('team_id');
+  const blSet=new Set((bl||[]).map(b=>b.team_id));
+  const daysOver=d=>Math.floor((new Date()-new Date(d+'T00:00:00'))/86400000);
+  document.getElementById('overview-overdue-bl').innerHTML=over.map(a=>{
+    const days=daysOver(a.return_date);const isBanned=blSet.has(a.team_id);
+    return`<div class="bl-row"><div><strong>[${a.teams?.module||''}] ${a.teams?.team_name||'—'}</strong><br><span style="font-size:11px;color:var(--red);">⚠️ ${days} day(s) overdue · Due: ${a.return_date}</span></div>
+    <div style="display:flex;gap:6px;">${isBanned?'<span class="badge badge-banned">Blacklisted</span>':`<button class="btn btn-danger btn-sm" onclick="openBlModal('${a.team_id}','${a.teams?.team_name||''}',${days})">🚫 Blacklist</button>`}
+    <button class="btn btn-approve btn-sm" onclick="openModal('${a.id}','returned')">✅ Returned</button></div></div>`;
+  }).join('');
+}
+
+// ── APPLICATIONS ──
+async function loadApps(){
+  const{data}=await sb.from('loan_applications').select('*,teams(team_name,module)').order('created_at',{ascending:false});
+  allApps=data||[];
+  const modules=[...new Set(allApps.map(a=>a.teams?.module).filter(Boolean))];
+  const sel=document.getElementById('f-module');
+  sel.innerHTML='<option value="">All Modules</option>';
+  modules.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+  filterApps();
+}
+function filterApps(){
+  const status=document.getElementById('f-status').value;
+  const module=document.getElementById('f-module').value;
+  const search=document.getElementById('f-search').value.toLowerCase();
+  let list=allApps;
+  if(status)list=list.filter(a=>a.status===status);
+  if(module)list=list.filter(a=>a.teams?.module===module);
+  if(search)list=list.filter(a=>(a.applicant_email||'').includes(search)||(a.teams?.team_name||'').toLowerCase().includes(search));
+  const acts={
+    pending:a=>`<button class="btn btn-approve btn-sm" onclick="openModal('${a.id}','approve')">✓</button> <button class="btn btn-reject btn-sm" onclick="openModal('${a.id}','reject')">✗</button>`,
+    approved:a=>`<button class="btn btn-borrowed btn-sm" onclick="openModal('${a.id}','borrowed')">📦</button>`,
+    borrowed:a=>`<button class="btn btn-returned btn-sm" onclick="openModal('${a.id}','returned')">✅</button>`,
+    rejected:()=>'—',returned:()=>'—'
+  };
+  document.getElementById('apps-tbody').innerHTML=!list.length?'<tr><td colspan="8" class="empty-state">No applications found.</td></tr>'
+    :list.map(a=>`<tr><td>${a.teams?.module||'—'}</td><td><strong>${a.teams?.team_name||'—'}</strong></td>
+    <td style="font-size:11px;">${a.applicant_email||'—'}<br><span style="color:#aaa;">${a.purpose||''}</span></td>
+    <td style="font-size:11px;max-width:130px;">${Array.isArray(a.equipment_list)?a.equipment_list.join('<br>'):a.equipment_list||'—'}</td>
+    <td>${a.borrow_date}</td><td>${a.return_date}</td>
+    <td><span class="badge badge-${a.status}">${a.status}</span>${a.admin_note?`<br><span style="font-size:10px;color:#888;">${a.admin_note}</span>`:''}</td>
+    <td>${(acts[a.status]||(() =>'—'))(a)}</td></tr>`).join('');
+}
+
+// ── ACTION MODAL (writes via Edge Function) ──
+function openModal(appId,action){
+  pendingAction={appId,action};
+  const labels={approve:'Approve Application',reject:'Reject Application',borrowed:'Mark as Borrowed',returned:'Mark as Returned'};
+  const descs={approve:'Approve this application.',reject:'Reject this application.',borrowed:'Mark that the student has picked up equipment.',returned:'Mark that equipment has been returned.'};
+  document.getElementById('modal-title').textContent=labels[action];
+  document.getElementById('modal-desc').textContent=descs[action];
+  document.getElementById('modal-note').value='';
+  document.getElementById('action-modal').style.display='flex';
+}
+function closeModal(){document.getElementById('action-modal').style.display='none';pendingAction=null;}
+async function confirmAction(){
+  if(!pendingAction)return;
+  const{appId,action}=pendingAction;
+  const note=document.getElementById('modal-note').value.trim();
+  const statusMap={approve:'approved',reject:'rejected',borrowed:'borrowed',returned:'returned'};
+  const r=await fn({action:'update_application',id:appId,status:statusMap[action],admin_note:note});
+  if(r.error){alert('Error: '+r.error);return;}
+  closeModal();loadApps();loadAll();loadTasks();
+  if(action==='returned')loadBlacklist();
+}
+
+// ── TASKS ──
+async function loadTasks(){
+  const today=new Date().toISOString().slice(0,10);
+  const{data:apps}=await sb.from('loan_applications').select('*,teams(id,team_name,module)').order('created_at',{ascending:false});
+  if(!apps)return;
+  const approved=apps.filter(a=>a.status==='approved');
+  const rejected=apps.filter(a=>a.status==='rejected');
+  const returnToday=apps.filter(a=>a.status==='borrowed'&&a.return_date===today);
+  const overdue=apps.filter(a=>a.status==='borrowed'&&a.return_date<today);
+  const teamIds=[...new Set(apps.map(a=>a.teams?.id).filter(Boolean))];
+  const{data:students}=await sb.from('students').select('team_id,name,email').in('team_id',teamIds);
+  function taskTable(list,empty){
+    if(!list.length)return`<div class="empty-state">${empty}</div>`;
+    return`<table><thead><tr><th>Module</th><th>Group</th><th>Borrow</th><th>Return</th><th>Members</th></tr></thead><tbody>
+    ${list.map(a=>{const ms=(students||[]).filter(s=>s.team_id===a.teams?.id);
+    return`<tr><td>${a.teams?.module||'—'}</td><td>${a.teams?.team_name||'—'}</td><td>${a.borrow_date}</td><td>${a.return_date}</td>
+    <td style="font-size:11px;">${ms.map(m=>`${m.name} <span style="color:#aaa;">${m.email}</span>`).join('<br>')}</td></tr>`;}).join('')}
+    </tbody></table>`;
+  }
+  document.getElementById('task-approved').innerHTML=taskTable(approved,'No approved applications.');
+  document.getElementById('task-rejected').innerHTML=taskTable(rejected,'No rejected applications.');
+  document.getElementById('task-return-today').innerHTML=taskTable(returnToday,'No returns due today.');
+  document.getElementById('task-overdue').innerHTML=taskTable(overdue,'No overdue items. 🎉');
+  window._taskData={approved,rejected,returnToday,overdue,students};
+}
+async function exportEmails(type){
+  if(!window._taskData)await loadTasks();
+  const{approved,rejected,returnToday,overdue,students}=window._taskData;
+  const listMap={approved,rejected,'return-today':returnToday,overdue};
+  const list=listMap[type]||[];
+  const teamIds=list.map(a=>a.teams?.id).filter(Boolean);
+  const emails=[...new Set((students||[]).filter(s=>teamIds.includes(s.team_id)).map(m=>m.email).filter(Boolean))];
+  document.getElementById('export-title').textContent={approved:'Approved',rejected:'Rejected','return-today':'Due Today',overdue:'Overdue'}[type]+' — Emails';
+  document.getElementById('export-content').textContent=emails.join('\n')||'(No emails found)';
+  document.getElementById('export-modal').style.display='flex';
+  document.getElementById('copy-msg').innerHTML='';
+}
+function copyEmails(){
+  navigator.clipboard.writeText(document.getElementById('export-content').textContent).then(()=>{
+    document.getElementById('copy-msg').innerHTML='<div class="alert alert-success">✓ Copied!</div>';
+    setTimeout(()=>{document.getElementById('copy-msg').innerHTML='';},2000);
+  });
+}
+
+// ── BLACKLIST ──
+async function loadBlacklist(){
+  const today=new Date().toISOString().slice(0,10);
+  const{data:over}=await sb.from('loan_applications').select('id,team_id,return_date,teams(team_name,module)').eq('status','borrowed').lt('return_date',today);
+  const{data:blEx}=await sb.from('blacklist').select('team_id');
+  const blSet=new Set((blEx||[]).map(b=>b.team_id));
+  const unhandled=(over||[]).filter(a=>!blSet.has(a.team_id));
+  const daysOver=d=>Math.floor((new Date()-new Date(d+'T00:00:00'))/86400000);
+  document.getElementById('overdue-groups').innerHTML=!unhandled.length?'<div class="empty-state">No unhandled overdue groups. 🎉</div>'
+    :unhandled.map(a=>`<div class="bl-row"><div><strong>[${a.teams?.module||''}] ${a.teams?.team_name||'—'}</strong><br>
+    <span style="font-size:11px;color:var(--red);">⚠️ ${daysOver(a.return_date)} day(s) overdue · Due: ${a.return_date}</span></div>
+    <div style="display:flex;gap:6px;"><button class="btn btn-danger btn-sm" onclick="openBlModal('${a.team_id}','${a.teams?.team_name||''}',${daysOver(a.return_date)})">🚫 Blacklist</button>
+    <button class="btn btn-approve btn-sm" onclick="openModal('${a.id}','returned')">✅ Returned</button></div></div>`).join('');
+  const{data:bl}=await sb.from('blacklist').select('*,teams(team_name,module)').order('created_at',{ascending:false});
+  if(!bl?.length){document.getElementById('blacklist-content').innerHTML='<div class="empty-state">No groups blacklisted.</div>';return;}
+  const{data:blMembers}=await sb.from('students').select('team_id,name,student_id,email').in('team_id',bl.map(b=>b.team_id));
+  document.getElementById('blacklist-content').innerHTML=bl.map(b=>{
+    const mems=(blMembers||[]).filter(m=>m.team_id===b.team_id);
+    const isActive=b.is_permanent||(b.banned_until&&new Date(b.banned_until)>new Date());
+    const untilStr=b.is_permanent?'Permanent':b.banned_until?`Until: ${new Date(b.banned_until).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`:'-';
+    return`<div class="blacklist-banner"><h4>🚫 [${b.teams?.module||''}] ${b.teams?.team_name||'—'} · ${untilStr} ${isActive?'<span class="badge badge-banned">Active</span>':'<span class="badge badge-returned">Expired</span>'}</h4>
+    <p style="font-size:11px;color:#666;margin-bottom:8px;">Reason: ${b.reason||'—'}</p>
+    <div style="font-size:11px;margin-bottom:8px;">${mems.map(m=>`<span style="display:inline-block;margin-right:12px;">👤 ${m.name} (${m.student_id}) ${m.email}</span>`).join('')}</div>
+    <button class="btn btn-returned btn-sm" onclick="removeBl('${b.id}')">Remove from Blacklist</button></div>`;
+  }).join('');
+}
+function openBlModal(teamId,teamName,days){
+  pendingBlTeamId=teamId;
+  document.getElementById('bl-modal-desc').textContent=`Team: ${teamName} · ${days} day(s) overdue.`;
+  const sel=document.getElementById('bl-duration');
+  if(days>=14)sel.value='30';else if(days>=7)sel.value='14';else sel.value='7';
+  document.getElementById('bl-reason').value=`Equipment returned ${days} day(s) late.`;
+  document.getElementById('bl-modal-err').innerHTML='';
+  document.getElementById('bl-modal').style.display='flex';
+}
+async function confirmBlacklist(){
+  if(!pendingBlTeamId)return;
+  const days=parseInt(document.getElementById('bl-duration').value);
+  const reason=document.getElementById('bl-reason').value.trim();
+  const isPermanent=days===0;
+  const bannedUntil=isPermanent?null:new Date(Date.now()+days*86400000).toISOString();
+  const r=await fn({action:'insert_blacklist',team_id:pendingBlTeamId,reason,banned_until:bannedUntil,is_permanent:isPermanent});
+  if(r.error){document.getElementById('bl-modal-err').innerHTML=`<div class="alert alert-error">${r.error}</div>`;return;}
+  document.getElementById('bl-modal').style.display='none';
+  pendingBlTeamId=null;loadBlacklist();loadOverdueForBl();loadAll();
+}
+async function removeBl(id){
+  if(!confirm('Remove this group from the blacklist?'))return;
+  const r=await fn({action:'delete_blacklist',id});
+  if(r.error){alert('Error: '+r.error);return;}
+  loadBlacklist();
+}
+
+// ── LOAN DATES ──
+async function loadSlots(){
+  const{data:slots}=await sb.from('loan_slots').select('*').order('slot_date');
+  const{data:apps}=await sb.from('loan_applications').select('slot_id').in('status',['approved','borrowed']);
+  const counts={};(apps||[]).forEach(a=>{counts[a.slot_id]=(counts[a.slot_id]||0)+1;});
+  document.getElementById('slots-tbody').innerHTML=!slots?.length?'<tr><td colspan="5" class="empty-state">No dates added yet.</td></tr>'
+    :slots.map(s=>{
+      const d=new Date(s.slot_date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+      return`<tr><td><strong>${d}</strong></td><td>${s.max_loans}</td><td>${counts[s.id]||0}</td>
+      <td><label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;cursor:pointer;"><input type="checkbox" ${s.is_open?'checked':''} onchange="toggleSlot('${s.id}',this.checked)"> Open</label></td>
+      <td><button class="btn btn-reject btn-sm" onclick="deleteSlot('${s.id}')">Delete</button></td></tr>`;
+    }).join('');
+}
+async function addSlot(){
+  const date=document.getElementById('new-slot-date').value;
+  const max=parseInt(document.getElementById('new-slot-max').value)||3;
+  const msg=document.getElementById('slot-msg');
+  if(!date){msg.innerHTML='<div class="alert alert-error">Please select a date.</div>';return;}
+  const r=await fn({action:'insert_slot',slot_date:date,max_loans:max});
+  if(r.error){msg.innerHTML=`<div class="alert alert-error">${r.error}</div>`;return;}
+  msg.innerHTML='<div class="alert alert-success">Date added!</div>';
+  setTimeout(()=>{msg.innerHTML='';},2000);loadSlots();
+}
+async function toggleSlot(id,is_open){
+  const r=await fn({action:'update_slot',id,is_open});
+  if(r.error)alert('Error: '+r.error);
+}
+async function deleteSlot(id){
+  if(!confirm('Delete this date?'))return;
+  const r=await fn({action:'delete_slot',id});
+  if(r.error){alert('Error: '+r.error);return;}
+  loadSlots();
+}
+
+// ── QUIZ EDITOR ──
+async function loadQuizList(){
+  const{data}=await sb.from('quiz_questions').select('*').order('order_num');
+  allQuestions=data||[];
+  document.getElementById('quiz-count').textContent=`(${allQuestions.length} questions)`;
+  filterQuizList();
+}
+function filterQuizList(){
+  const typeF=document.getElementById('qf-type').value;
+  const list=typeF?allQuestions.filter(q=>q.type===typeF):allQuestions;
+  const tag=t=>`<span class="${t==='single'?'tag-s':t==='multi'?'tag-m':'tag-t'}">${t}</span>`;
+  document.getElementById('quiz-list').innerHTML=!list.length?'<div class="empty-state">No questions.</div>'
+    :list.map(q=>`<div class="quiz-row"><div style="flex:1;">${tag(q.type)} <span style="margin-left:6px;">${q.question.slice(0,80)}${q.question.length>80?'…':''}</span>
+    <div style="font-size:10px;color:#aaa;margin-top:2px;">Correct: ${q.correct_answers.map(i=>String.fromCharCode(65+i)).join(',')}</div></div>
+    <div style="display:flex;gap:5px;flex-shrink:0;"><button class="btn btn-primary btn-sm" onclick="editQuestion('${q.id}')">Edit</button>
+    <button class="btn btn-reject btn-sm" onclick="deleteQuestion('${q.id}')">Del</button></div></div>`).join('');
+}
+function showAddQuestion(){editingQId=null;document.getElementById('qmodal-title').textContent='Add Question';document.getElementById('q-text').value='';document.getElementById('q-type').value='single';document.getElementById('q-correct').value='';document.getElementById('qmodal-err').innerHTML='';renderOptionFields();document.getElementById('quiz-modal').style.display='flex';}
+function editQuestion(id){const q=allQuestions.find(q=>q.id===id);if(!q)return;editingQId=id;document.getElementById('qmodal-title').textContent='Edit Question';document.getElementById('q-text').value=q.question;document.getElementById('q-type').value=q.type;document.getElementById('q-correct').value=q.correct_answers.join(',');document.getElementById('qmodal-err').innerHTML='';renderOptionFields(q.options);document.getElementById('quiz-modal').style.display='flex';}
+function renderOptionFields(existing=[]){
+  const type=document.getElementById('q-type').value,wrap=document.getElementById('q-options-wrap');
+  if(type==='truefalse'){wrap.innerHTML='<div class="field"><label>Options (fixed)</label><div style="font-size:11px;color:#aaa;margin-top:3px;">A. 正确/True &nbsp; B. 错误/False</div></div>';return;}
+  const count=existing.length||4;
+  wrap.innerHTML=`<div class="field"><label>Options <button type="button" class="btn btn-returned btn-sm" style="margin-left:6px;" onclick="addOptField()">+ Add</button></label>
+  <div id="opts-list" style="margin-top:5px;">${Array.from({length:count},(_,i)=>`<div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;"><span style="font-size:11px;font-weight:700;min-width:18px;">${String.fromCharCode(65+i)}.</span><input type="text" id="opt-${i}" value="${existing[i]||''}" style="flex:1;"></div>`).join('')}</div></div>`;
+}
+function addOptField(){const list=document.getElementById('opts-list'),i=list.children.length,div=document.createElement('div');div.style.cssText='display:flex;gap:5px;margin-bottom:5px;align-items:center;';div.innerHTML=`<span style="font-size:11px;font-weight:700;min-width:18px;">${String.fromCharCode(65+i)}.</span><input type="text" id="opt-${i}" style="flex:1;">`;list.appendChild(div);}
+async function saveQuestion(){
+  const text=document.getElementById('q-text').value.trim(),type=document.getElementById('q-type').value,correctStr=document.getElementById('q-correct').value.trim();
+  document.getElementById('qmodal-err').innerHTML='';
+  if(!text){document.getElementById('qmodal-err').innerHTML='<div class="alert alert-error">Please enter the question.</div>';return;}
+  let options,correct;
+  if(type==='truefalse'){options=['正确 / True','错误 / False'];}
+  else{const list=document.getElementById('opts-list');options=Array.from(list.children).map((_,i)=>document.getElementById('opt-'+i)?.value.trim()).filter(Boolean);if(options.length<2){document.getElementById('qmodal-err').innerHTML='<div class="alert alert-error">Add at least 2 options.</div>';return;}}
+  correct=correctStr.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
+  if(!correct.length){document.getElementById('qmodal-err').innerHTML='<div class="alert alert-error">Invalid answer format.</div>';return;}
+  const maxOrder=allQuestions.length?Math.max(...allQuestions.map(q=>q.order_num||0))+1:1;
+  const q={question:text,type,options,correct_answers:correct,order_num:maxOrder};
+  if(editingQId)q.id=editingQId;
+  const r=await fn({action:'upsert_question',question:q});
+  if(r.error){document.getElementById('qmodal-err').innerHTML=`<div class="alert alert-error">${r.error}</div>`;return;}
+  closeQuizModal();loadQuizList();
+}
+async function deleteQuestion(id){
+  if(!confirm('Delete this question?'))return;
+  const r=await fn({action:'delete_question',id});
+  if(r.error){alert('Error: '+r.error);return;}
+  loadQuizList();
+}
+function closeQuizModal(){document.getElementById('quiz-modal').style.display='none';editingQId=null;}
+async function loadQuizToDb(){
+  if(!confirm('This will delete all existing questions and reload from template. Continue?'))return;
+  const r=await fn({action:'insert_questions',questions:getQuizData()});
+  const msg=document.getElementById('quiz-load-msg');
+  if(r.error){msg.innerHTML=`<div class="alert alert-error">${r.error}</div>`;return;}
+  msg.innerHTML=`<div class="alert alert-success">✓ Questions loaded!</div>`;
+  setTimeout(()=>{msg.innerHTML='';},3000);loadQuizList();
+}
+
+// ── TEAMS ──
+async function loadTeams(){
+  const{data:teams}=await sb.from('teams').select('id,team_name,module').order('module');
+  const{data:students}=await sb.from('students').select('*').order('is_leader',{ascending:false});
+  const{data:apps}=await sb.from('loan_applications').select('team_id,status');
+  const{data:bl}=await sb.from('blacklist').select('team_id');
+  const bannedIds=new Set((bl||[]).map(b=>b.team_id));
+  allTeams=teams||[];allStudents=students||[];
+  const modules=[...new Set(allTeams.map(t=>t.module).filter(Boolean))];
+  const sel=document.getElementById('team-module-filter');
+  sel.innerHTML='<option value="">All Modules</option>';
+  modules.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+  window._appsForTeams=apps||[];window._bannedTeams=bannedIds;
+  filterTeams();
+}
+function filterTeams(){
+  const mf=document.getElementById('team-module-filter').value;
+  const search=document.getElementById('team-search').value.toLowerCase();
+  let list=allTeams;
+  if(mf)list=list.filter(t=>t.module===mf);
+  if(search)list=list.filter(t=>{const ms=allStudents.filter(s=>s.team_id===t.id);return(t.team_name||'').toLowerCase().includes(search)||(t.module||'').toLowerCase().includes(search)||ms.some(m=>(m.name||'').toLowerCase().includes(search)||(m.email||'').includes(search)||(m.student_id||'').includes(search));});
+  const apps=window._appsForTeams||[];const bannedIds=window._bannedTeams||new Set();
+  document.getElementById('teams-tbody').innerHTML=!list.length?'<tr><td colspan="5" class="empty-state">No teams found.</td></tr>'
+    :list.map(t=>{
+      const members=allStudents.filter(s=>s.team_id===t.id);
+      const app=apps.find(a=>a.team_id===t.id);
+      const allPassed=members.length>0&&members.every(m=>m.quiz_passed);
+      const isBanned=bannedIds.has(t.id);
+      return`<tr style="cursor:pointer;" onclick="toggleTeamDetail('${t.id}')">
+        <td><strong>${t.module||'—'}</strong>${isBanned?'<br><span class="badge badge-banned" style="font-size:10px;">🚫 Blacklisted</span>':''}</td>
+        <td><strong>${t.team_name||'—'}</strong><br><span style="font-size:10px;color:#aaa;">${members.length} members · tap to expand</span></td>
+        <td>${members.map(m=>`<span style="font-size:11px;display:block;">${m.is_leader?'👑':'👤'} ${m.name}</span>`).join('')}</td>
+        <td>${allPassed?'<span class="badge badge-returned">All ✓</span>':members.map(m=>`<span class="badge ${m.quiz_passed?'badge-returned':'badge-pending'}" style="margin:1px;">${m.name.split(' ')[0]}: ${m.quiz_passed?'✓':'✗'}</span>`).join('')}</td>
+        <td>${app?`<span class="badge badge-${app.status}">${app.status}</span>`:'<span style="color:#aaa;font-size:11px;">None</span>'}</td>
+      </tr>
+      <tr id="team-detail-${t.id}" style="display:none;"><td colspan="5" style="padding:0;background:#fafafe;">
+        <div style="padding:12px;border-top:1px solid #e5e5f0;">
+          <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:8px;">Full Member Details</div>
+          ${members.map(m=>`<div style="margin-bottom:10px;padding:10px;background:white;border-radius:8px;border:1px solid #e5e5f0;">
+            <div style="font-weight:700;font-size:12px;margin-bottom:7px;">${m.is_leader?'👑 Leader':'👤 Member'} — ${m.name}</div>
+            <div class="md-row"><span>Student ID</span><span>${m.student_id||'—'}</span></div>
+            <div class="md-row"><span>Chinese Name</span><span>${m.chinese_name||'—'}</span></div>
+            <div class="md-row"><span>Email</span><span>${m.email||'—'}</span></div>
+            <div class="md-row"><span>Telephone</span><span>${m.phone||'—'}</span></div>
+            <div class="md-row"><span>Quiz</span><span style="color:${m.quiz_passed?'var(--teal)':'var(--red)'};">${m.quiz_passed?'✓ Passed':'✗ Not passed'}</span></div>
+          </div>`).join('')}
+        </div>
+      </td></tr>`;
+    }).join('');
+}
+function toggleTeamDetail(id){const r=document.getElementById('team-detail-'+id);if(r)r.style.display=r.style.display==='none'?'':'none';}
+
+// ── SETTINGS ──
+async function loadSettings(){
+  const{data}=await sb.from('system_settings').select('*');
+  sysSettings={};
+  (data||[]).forEach(row=>{try{sysSettings[row.key]=typeof row.value==='string'?JSON.parse(row.value):row.value;}catch{sysSettings[row.key]=row.value;}});
+  renderSettings();
+}
+async function saveSetting(key,value){
+  const r=await fn({action:'upsert_setting',key,value});
+  if(r.error){alert('Error saving setting: '+r.error);return;}
+  sysSettings[key]=value;
+  // Brief visual feedback
+  const el=document.querySelector(`[data-setting="${key}"]`);
+  if(el){el.style.color='var(--teal)';setTimeout(()=>{el.style.color='';},1500);}
+}
+async function saveFieldSetting(field,value){
+  const current=sysSettings.step1_fields||{chinese_name:true,phone:true};
+  current[field]=value;
+  await saveSetting('step1_fields',current);
+}
+function renderSettings(){
+  const s=sysSettings;
+  const equipList=Array.isArray(s.equipment_list)?s.equipment_list:[];
+  const step1Fields=s.step1_fields||{chinese_name:true,phone:true};
+  document.getElementById('settings-content').innerHTML=`
+    <div class="setting-group"><h4>📧 Step 1 — Email Settings</h4>
+      <div class="setting-row">
+        <div><div class="setting-label">Require email OTP verification</div><div class="setting-desc">When off, students skip OTP and go directly to group registration.</div></div>
+        <label class="toggle"><input type="checkbox" ${s.require_otp===true||s.require_otp==='true'?'checked':''} onchange="saveSetting('require_otp',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Email domain restriction</div><div class="setting-desc">Leave blank to allow any domain.</div></div>
+        <input type="text" value="${s.email_domain||''}" placeholder="e.g. student.xjtlu.edu.cn" style="width:220px;" onblur="saveSetting('email_domain',this.value)" data-setting="email_domain">
+      </div>
+    </div>
+    <div class="setting-group"><h4>📝 Step 1 — Required Fields</h4>
+      <div class="setting-row"><div><div class="setting-label">Require Chinese name</div></div>
+        <label class="toggle"><input type="checkbox" ${step1Fields.chinese_name!==false?'checked':''} onchange="saveFieldSetting('chinese_name',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row"><div><div class="setting-label">Require telephone</div></div>
+        <label class="toggle"><input type="checkbox" ${step1Fields.phone!==false?'checked':''} onchange="saveFieldSetting('phone',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <div class="setting-group"><h4>🧠 Step 2 — Quiz Settings</h4>
+      <div class="setting-row">
+        <div><div class="setting-label">Require group registration before quiz</div><div class="setting-desc">When off, anyone can take the quiz without joining a group first.</div></div>
+        <label class="toggle"><input type="checkbox" ${s.require_team_for_quiz===true||s.require_team_for_quiz==='true'?'checked':''} onchange="saveSetting('require_team_for_quiz',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Max quiz attempts per student</div><div class="setting-desc">0 = unlimited</div></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="set-max-attempts" value="${s.quiz_max_attempts||3}" min="0" max="99" style="width:70px;">
+          <button class="btn btn-primary btn-sm" onclick="saveSetting('quiz_max_attempts',parseInt(document.getElementById('set-max-attempts').value)||0)">Save</button>
+        </div>
+      </div>
+    </div>
+    <div class="setting-group"><h4>📅 Step 3 — Loan Duration</h4>
+      <div class="setting-row">
+        <div><div class="setting-label">Loan days for 2-person group (inclusive)</div></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="set-days-2" value="${s.loan_days_2||6}" min="1" max="30" style="width:70px;">
+          <button class="btn btn-primary btn-sm" onclick="saveSetting('loan_days_2',parseInt(document.getElementById('set-days-2').value)||6)">Save</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Loan days for 3-person group (inclusive)</div></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" id="set-days-3" value="${s.loan_days_3||9}" min="1" max="30" style="width:70px;">
+          <button class="btn btn-primary btn-sm" onclick="saveSetting('loan_days_3',parseInt(document.getElementById('set-days-3').value)||9)">Save</button>
+        </div>
+      </div>
+    </div>
+    <div class="setting-group"><h4>📦 Step 3 — Equipment List</h4>
+      <p style="font-size:11px;color:#888;margin-bottom:9px;">Add or remove equipment items. Students see this in Step 3.</p>
+      <div id="equip-tags">${equipList.map((e,i)=>`<span class="equip-tag">${e}<button onclick="removeEquip(${i})" title="Remove">×</button></span>`).join('')}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input type="text" id="new-equip-input" placeholder="New equipment name" style="flex:1;">
+        <button class="btn btn-primary btn-sm" onclick="addEquip()">+ Add</button>
+      </div>
+    </div>
+    <div class="setting-group" style="border-color:#fca5a5;background:#fff8f8;"><h4 style="color:var(--red);">🗑️ Data Management</h4>
+      <p style="font-size:11px;color:#888;margin-bottom:10px;">⚠️ Irreversible. Type DELETE to confirm.</p>
+      <div class="data-action-row"><div><div class="setting-label">Clear all team registrations</div><div class="setting-desc">Deletes all groups, members, and quiz attempts.</div></div><button class="btn btn-danger btn-sm" onclick="openDataModal('teams','Clear all teams, students and quiz records?')">Delete Teams</button></div>
+      <div class="data-action-row"><div><div class="setting-label">Clear all loan applications</div><div class="setting-desc">Deletes all applications. Team registrations are kept.</div></div><button class="btn btn-danger btn-sm" onclick="openDataModal('applications','Clear all loan applications?')">Delete Applications</button></div>
+      <div class="data-action-row"><div><div class="setting-label">Clear blacklist</div></div><button class="btn btn-warn btn-sm" onclick="openDataModal('blacklist','Clear all blacklist records?')">Clear Blacklist</button></div>
+      <div class="data-action-row"><div><div class="setting-label">Clear OTP codes</div></div><button class="btn btn-returned btn-sm" onclick="openDataModal('otp','Clear all OTP codes?')">Clear OTP</button></div>
+    </div>`;
+}
+async function addEquip(){
+  const input=document.getElementById('new-equip-input');const val=input.value.trim();if(!val)return;
+  const list=Array.isArray(sysSettings.equipment_list)?[...sysSettings.equipment_list]:[];
+  list.push(val);await saveSetting('equipment_list',list);input.value='';sysSettings.equipment_list=list;renderSettings();
+}
+async function removeEquip(i){
+  const list=Array.isArray(sysSettings.equipment_list)?[...sysSettings.equipment_list]:[];
+  list.splice(i,1);await saveSetting('equipment_list',list);sysSettings.equipment_list=list;renderSettings();
+}
+function openDataModal(type,desc){
+  pendingDataAction=type;
+  document.getElementById('data-modal-desc').textContent=desc;
+  document.getElementById('data-confirm-input').value='';
+  document.getElementById('data-modal-err').innerHTML='';
+  document.getElementById('data-modal').style.display='flex';
+}
+async function confirmDataDelete(){
+  if(document.getElementById('data-confirm-input').value.trim()!=='DELETE'){document.getElementById('data-modal-err').innerHTML='<div class="alert alert-error">Please type DELETE to confirm.</div>';return;}
+  const r=await fn({action:'clear_data',target:pendingDataAction});
+  if(r.error){document.getElementById('data-modal-err').innerHTML=`<div class="alert alert-error">${r.error}</div>`;return;}
+  document.getElementById('data-modal').style.display='none';
+  pendingDataAction=null;loadAll();alert('Data cleared successfully.');
+}
+
+// ── QUIZ DATA ──
+function getQuizData(){
+  const q=[];let n=1;
+  const s=[
+    {question:"安装相机到三脚架时，最需要注意什么？\nWhat is most important when mounting a camera on a tripod?",options:["快装板是否完全锁紧 / Quick release plate is fully locked","云台阻尼是否合适 / Proper pan/tilt damping","三脚架高度是否合适 / Tripod height is appropriate","中轴是否升得太高 / Center column raised too high"],correct:[0]},
+    {question:"更换镜头时，以下哪种做法正确？\nWhich is correct when changing lenses?",options:["在户外大风环境中更换 / Change in windy outdoor environment","关机后，相机卡口朝下快速更换 / Turn off, mount downward, change quickly","快速更换，不需要关机 / Change quickly without turning off","用嘴吹一下卡口再换 / Blow on the mount before changing"],correct:[1]},
+    {question:"清洁镜头表面灰尘，正确的方法是？\nCorrect way to clean dust from lens?",options:["用衣角用力擦 / Rub with clothing","用嘴吹气 / Blow with mouth","先用气吹，再用镜头布轻擦 / Use blower then gently wipe with lens cloth","用湿纸巾直接擦 / Wipe with wet wipes"],correct:[2]},
+    {question:"以下哪种操作最可能损坏存储卡？\nWhich most likely damages a memory card?",options:["在相机内格式化 / Formatting in camera","定期备份文件 / Regular backups","使用前检查剩余空间 / Checking space before use","相机写入数据时直接拔出 / Removing while writing"],correct:[3]},
+    {question:"拍摄4K视频时，选择存储卡主要看什么？\nMost important when choosing a card for 4K video?",options:["写入速度 / Write speed","存储容量 / Storage capacity","品牌 / Brand","外观 / Appearance"],correct:[0]},
+    {question:"使用外接麦克风时，正确的做法是？\nCorrect practice when using external microphone?",options:["开机状态下直接插拔 / Plug/unplug while on","关机后连接，检查接口匹配 / Connect after turning off, check interface","用力插紧即可 / Force it in","任何接口都通用 / All interfaces universal"],correct:[1]},
+    {question:"相机固定在三脚架上时，镜头防抖功能应如何处理？\nHow to handle image stabilization when camera is on tripod?",options:["必须开启 / Must be on","开启或关闭不影响 / Doesn't matter","建议关闭 / Recommended to turn off","只有长焦需要开启 / Only needed for telephoto"],correct:[2]},
+    {question:"拍摄时设备意外摔落，正确的处理是？\nCorrect response if equipment is accidentally dropped?",options:["关机检查，有明显异常停止使用并报修 / Turn off, check, stop and report if damaged","捡起来继续拍 / Pick up and continue","用力拍几下看能否恢复 / Tap firmly","自己拆开检查 / Disassemble yourself"],correct:[0]},
+    {question:"长时间录制视频时相机提示过热，应如何处理？\nCamera shows overheating during long recording?",options:["无视提示继续录 / Ignore and continue","暂停录制让设备冷却 / Pause and let it cool","用湿布覆盖降温 / Cover with wet cloth","调低画质继续录 / Lower quality and continue"],correct:[1]},
+    {question:"设备意外落水后，正确的做法是？\nCorrect action if equipment falls into water?",options:["立即开机检查 / Immediately turn on","用电吹风吹干 / Use hairdryer","捞出后立即关机，取出电池和存储卡 / Retrieve, turn off, remove battery and card","放入米缸吸湿 / Put in rice"],correct:[2]},
+    {question:"发现镜头内有霉斑，正确的处理是？\nMold found inside lens?",options:["继续使用 / Continue using","放阳光下暴晒 / Put in sunlight","放入防潮箱并联系专业人员 / Dry cabinet and contact professionals","用酒精擦拭 / Wipe with alcohol"],correct:[2]},
+    {question:"不同型号的相机电池，接口相同是否可以混用？\nCan batteries of different models with same interface be interchanged?",options:["可以，只要电压相同 / Yes if voltage matches","可以，但续航会下降 / Yes but life decreases","不可以，但充一次没事 / No but one charge is fine","不可以，可能损坏设备 / No, may damage equipment"],correct:[3]},
+    {question:"存储卡在相机内格式化和在电脑上格式化，哪个更可靠？\nFormatting in camera vs computer, which is more reliable?",options:["电脑上更可靠 / Computer","相机内更可靠 / In camera","一样可靠 / Same","取决于品牌 / Depends on brand"],correct:[1]},
+    {question:"三脚架升起中轴会带来什么影响？\nEffect of raising tripod center column?",options:["降低稳定性 / Reduces stability","增加稳定性 / Increases stability","不影响稳定性 / No effect","只影响高度 / Only affects height"],correct:[0]},
+    {question:"拍摄时发现照片偏蓝，最可能是什么原因？\nMost likely cause of photos appearing too blue?",options:["快门速度太快 / Shutter too fast","白平衡设置错误 / Wrong white balance","光圈开得太大 / Aperture too wide","存储卡已满 / Memory card full"],correct:[1]},
+    {question:"电池充电时异常发热或鼓包，应该？\nBattery abnormally hot or swollen while charging?",options:["继续充电观察 / Continue and observe","放进冰箱冷却 / Put in refrigerator","拔掉充电器停止使用并报告 / Unplug, stop and report","降低电流继续充 / Reduce current and continue"],correct:[2]},
+    {question:"镜头表面有油污时，正确的清洁方式是？\nCorrect way to clean oil from lens?",options:["用嘴吹气 / Blow","用衣角用力擦 / Rub with clothing","用镜头布蘸少量专用清洁液轻擦 / Lens cloth with cleaning fluid","用湿纸巾直接擦 / Wet wipes"],correct:[2]},
+    {question:"使用无线麦克风时声音断断续续，最可能的解决方法是？\nFix for intermittent audio with wireless microphone?",options:["增加收发器距离 / Increase distance","同时开多个同频麦克风 / Turn on multiple same-frequency mics","关闭接收器再开机 / Restart receiver","检查是否有遮挡并调整位置 / Check obstructions and adjust"],correct:[3]},
+    {question:"闪光灯可以在相机开机状态下直接安装吗？\nCan flash be mounted while camera is on?",options:["不可以，可能短路损坏 / No, may short circuit","可以，不影响 / Yes, no problem","可以，但需要先测试 / Yes but test first","只有原厂可以 / Only OEM"],correct:[0]},
+    {question:"相机电池在冬天室外拍摄时续航下降，合理做法是？\nBattery life drops in cold weather outdoor shooting?",options:["给相机贴暖宝宝 / Attach heat packs to camera","用吹风机加热电池 / Heat with hairdryer","继续拍摄直到没电 / Continue until dead","多带备用电池放贴身口袋保温 / Spare batteries in inner pocket"],correct:[3]},
+  ];
+  s.forEach(q2=>{q.push({question:q2.question,type:'single',options:q2.options,correct_answers:q2.correct,order_num:n++});});
+  const m=[
+    {question:"以下哪些是借用器材时必须做的？\nWhich are required when borrowing equipment?",options:["提前至少一个工作日线上申请","领取时核对配件清单","领取时检查设备功能","可以转借给同学使用"],correct:[0,1,2]},
+    {question:"小组成员共同借用时，关于责任划分哪些是正确的？\nWhich are correct regarding responsibility when group borrows?",options:["组长对设备负全责","所有组员平均承担","谁损坏谁赔与组长无关","组内可协商，但管理员只对接组长"],correct:[0,3]},
+    {question:"领取器材时，以下哪些做法是正确的？\nWhich are correct when picking up equipment?",options:["核对配件清单","现场测试设备","发现问题立即告知管理员","签字后就可以离开"],correct:[0,1,2]},
+    {question:"借用器材前需要谁签署协议书？\nWho needs to sign the agreement?",options:["学生本人","任课教师或指导教师","实验室管理员","学院院长"],correct:[0,1]},
+    {question:"器材使用过程中出现故障，正确的处理是？\nCorrect when equipment malfunctions during use?",options:["自行尝试修理","立即停止使用","联系管理员报告故障","继续使用到项目结束"],correct:[1,2]},
+    {question:"以下哪些行为会导致处罚？\nWhich behaviors result in penalties?",options:["逾期归还器材","擅自转借给他人","损坏器材","丢失配件"],correct:[0,1,2,3]},
+    {question:"关于器材归还，以下哪些是正确的？\nWhich are correct regarding equipment return?",options:["按领取时的包装方式整理好","一次性归还所有配件","可以分批归还","只需归还主要设备"],correct:[0,1]},
+    {question:"如需延长借用期限，正确的做法是？\nCorrect ways to extend loan period?",options:["直接不还等管理员联系","至少提前24小时联系管理员","得到同意后方可延期","归还时再说明"],correct:[1,2]},
+    {question:"逾期归还器材会面临哪些后果？\nConsequences of late return?",options:["逾期1天暂停借用1周","逾期天数累加停权时间","多次逾期可能永久停权","只需支付罚款"],correct:[0,1,2]},
+    {question:"携带器材离开苏州大市范围，必须？\nIf taking equipment outside Suzhou, you must?",options:["在协议书上注明","只需口头告知","得到管理员批准","回来再报告"],correct:[0,2]},
+    {question:"以下哪些情况属于过失损坏？\nWhich are considered negligent damage?",options:["设备自身故障","因疏忽操作不当","违反规定使用","已报警的被盗"],correct:[1,2]},
+    {question:"以下哪些行为是禁止的？\nWhich behaviors are prohibited?",options:["将器材转借给他人","自行拆卸故障设备","按规范操作设备","逾期归还"],correct:[0,1,3]},
+    {question:"关于协议签署，以下哪些是正确的？\nWhich are correct regarding signing the agreement?",options:["学生本人签署","教师签字确认","可以代签","签署后对器材负全责"],correct:[0,1,3]},
+    {question:"关于器材检查，以下哪些是正确的？\nWhich are correct regarding equipment inspection?",options:["领取时核对配件清单","领取时检查功能","归还时无需检查","发现问题当场告知管理员"],correct:[0,1,3]},
+    {question:"领取器材时发现配件缺失，应该怎么做？\nWhat if accessories missing when picking up?",options:["先领走下次再补","立即告知管理员","记录缺失情况","自行从其他设备拆"],correct:[1,2]},
+    {question:"关于设备使用环境的限制，以下哪些是正确的？\nWhich are correct regarding usage environment?",options:["可以在沙尘天气正常使用","应避免在潮湿、雨雪环境中使用","在沙滩拍摄后需自费承担清洁费用","恶劣环境使用导致的损坏按过失处理"],correct:[1,2]},
+    {question:"关于器材预订，以下哪些是正确的？\nWhich are correct regarding reservation?",options:["所有借用都需要提前申请","课堂使用需任课教师确认","毕业设计需指导教师授权","可以当天临时借用"],correct:[0,1,2]},
+    {question:"归还器材时管理员发现配件缺失，正确的处理是？\nCorrect when technician finds missing accessories?",options:["当场确认缺失","继续寻找","按规定处理","坚持借的时候就没有"],correct:[0,1,2]},
+  ];
+  m.forEach(q2=>{q.push({question:q2.question,type:'multi',options:q2.options,correct_answers:q2.correct,order_num:n++});});
+  const t=[
+    {question:"使用设备前可以不阅读操作说明，直接开机试用。\nYou can use equipment without reading instructions.",correct:[1]},
+    {question:"在实验室内可以吃东西喝水，只要不弄脏设备就可以。\nEating and drinking in lab is fine as long as equipment stays clean.",correct:[1]},
+    {question:"发现设备冒烟或有焦味，应先断电再报告管理员。\nIf smoke or burning smell, cut power first then report.",correct:[0]},
+    {question:"离开实验室不需要检查设备是否关闭，第二天有人处理。\nNo need to check if equipment is off before leaving.",correct:[1]},
+    {question:"发生紧急情况时，先确保人身安全，再处理设备问题。\nIn emergency, ensure personal safety first then deal with equipment.",correct:[0]},
+    {question:"插线板可以一个接一个串联使用，只要不超过总功率。\nExtension cords can be daisy-chained as long as total power limit isn't exceeded.",correct:[1]},
+    {question:"电源线和信号线应沿墙边布设，避免横穿通道。\nCables should run along walls, not across walkways.",correct:[0]},
+    {question:"设备充电时可以离开过夜，充电器会自动断电。\nEquipment can be left charging overnight.",correct:[1]},
+    {question:"发现安全隐患应立即上报或告知实验室管理员。\nSafety hazards should be reported immediately.",correct:[0]},
+    {question:"拔电源插头时应拉插头本体，不可直接拽电线。\nWhen unplugging, pull the plug not the cord.",correct:[0]},
+    {question:"灭火器压力表指针在红色区域表示压力正常可以使用。\nFire extinguisher gauge in red zone means normal pressure.",correct:[1]},
+    {question:"有人触电时应直接用手将其拉开。\nIf someone gets electric shock, pull them away with bare hands.",correct:[1]},
+    {question:"电池充电时发现异常发热或鼓包，可以继续观察。\nSwollen battery while charging can be observed and left.",correct:[1]},
+    {question:"实验室的消防通道可以临时堆放设备，只要不影响开门。\nFire exits can store equipment as long as doors open.",correct:[1]},
+    {question:"电器起火时，应先切断电源再使用灭火器。\nFor electrical fire, cut power first then use extinguisher.",correct:[0]},
+    {question:"实验室地面有水渍时，绕开走就行，不用报告。\nWater on lab floor — just walk around it.",correct:[1]},
+    {question:"熟悉灭火器位置和疏散路线是实验室安全的基本要求。\nKnowing fire extinguisher locations and evacuation routes is basic lab safety.",correct:[0]},
+    {question:"长时间离开实验室应关闭所有设备电源。\nWhen leaving lab for extended period, turn off all equipment.",correct:[0]},
+    {question:"使用完设备只需关机即可，不需要检查配件是否齐全。\nAfter use, just turn off; no need to check accessories.",correct:[1]},
+    {question:"湿手插拔电源插头没有危险，只要擦干手就可以。\nPlugging in with wet hands is fine as long as you dry them first.",correct:[1]},
+  ];
+  t.forEach(q2=>{q.push({question:q2.question,type:'truefalse',options:['正确 / True','错误 / False'],correct_answers:q2.correct,order_num:n++});});
+  return q;
+}
+</script>
+</body>
+</html>

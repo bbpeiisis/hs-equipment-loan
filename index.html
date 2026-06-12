@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DMC Equipment Loan System</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  /* Pantone 2766C - Primary navy */
+  --navy:       #141B4D;
+  --navy-dark:  #0d1235;
+  --navy-light: #1e2870;
+  /* Pantone 323C - Teal */
+  --teal:       #009B8D;
+  --teal-light: #e0f5f3;
+  /* Pantone 2995C - Sky blue */
+  --sky:        #009CDC;
+  --sky-light:  #e0f4fd;
+  /* Pantone 102C - Yellow */
+  --yellow:     #FFD700;
+  --yellow-light: #fffbe0;
+  /* Pantone 716C - Orange */
+  --orange:     #F4831F;
+  --orange-light: #fff3e0;
+  /* Pantone 382C - Yellow-green */
+  --green:      #C4D600;
+  --green-light: #f6fae0;
+  /* Pantone 252C - Purple */
+  --purple:     #C964CF;
+  --purple-light: #fae0fc;
+  /* Pantone 428C - Light gray */
+  --gray:       #C1C6C8;
+  --gray-light: #f4f5f5;
+  --white:      #ffffff;
+  --text:       #141B4D;
+  --text-secondary: #4a4f6a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0f8; color: var(--text); min-height: 100vh; }
+
+header { background: var(--navy); color: white; padding: 16px 20px; display: flex; align-items: center; gap: 14px; border-bottom: 4px solid var(--sky); }
+header .logo { width: 8px; height: 40px; background: var(--yellow); border-radius: 2px; flex-shrink: 0; }
+header h1 { font-size: 17px; font-weight: 700; }
+header p { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
+.container { max-width: 760px; margin: 0 auto; padding: 24px 14px 80px; }
+
+/* Tab nav */
+.tab-nav { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 3px; background: var(--gray); border-radius: 10px; padding: 3px; margin-bottom: 24px; }
+.tab-btn { padding: 9px 4px; border-radius: 7px; border: none; background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; color: #666; transition: all 0.2s; text-align: center; line-height: 1.35; }
+.tab-btn.active { background: var(--navy); color: white; box-shadow: 0 2px 6px rgba(27,42,107,0.3); }
+.tab-status { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; color: #999; }
+.tab-btn.active .tab-status { color: rgba(255,255,255,0.7); }
+.tab-status.done { color: var(--teal) !important; }
+
+/* Cards */
+.card { background: white; border-radius: 12px; padding: 22px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(27,42,107,0.08); border-top: 3px solid var(--gray); }
+.card.accent-navy { border-top-color: var(--navy); }
+.card.accent-teal { border-top-color: var(--teal); }
+.card.accent-sky { border-top-color: var(--sky); }
+.card.accent-orange { border-top-color: var(--orange); }
+.card h2 { font-size: 16px; font-weight: 700; margin-bottom: 5px; color: var(--navy); }
+.card .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.55; }
+.section-heading { font-size: 11px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: 0.5px; background: #eef0f8; padding: 6px 11px; border-radius: 6px; margin: 16px 0 11px; border-left: 3px solid var(--navy); }
+
+/* Form */
+label { display: block; font-size: 12px; font-weight: 600; color: #333; margin-bottom: 4px; }
+input, select, textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--gray); border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.2s; background: white; font-family: inherit; color: var(--text); }
+input:focus, select:focus, textarea:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(27,42,107,0.08); }
+input[readonly] { background: #f5f5f8; color: #888; }
+.field { margin-bottom: 12px; }
+.field-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.req { color: var(--orange); margin-left: 2px; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+.btn-primary { background: var(--navy); color: white; width: 100%; }
+.btn-primary:hover:not(:disabled) { background: var(--navy-light); }
+.btn-primary:disabled { background: var(--gray); cursor: not-allowed; }
+.btn-secondary { background: #f0f0f8; color: var(--navy); width: 100%; margin-top: 8px; border: 1.5px solid #dde; }
+.btn-secondary:hover { background: #e5e5f5; }
+.btn-teal { background: var(--teal); color: white; width: 100%; margin-top: 8px; }
+.btn-teal:hover { background: #006966; }
+
+/* Alerts */
+.alert { padding: 11px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 13px; line-height: 1.5; }
+.alert-error { background: #fff0f0; color: #c0392b; border: 1px solid #ffcdd2; border-left: 4px solid #e53935; }
+.alert-success { background: var(--teal-light); color: #00565a; border: 1px solid #80cbc4; border-left: 4px solid var(--teal); }
+.alert-info { background: var(--sky-light); color: #006ca0; border: 1px solid #81d4fa; border-left: 4px solid var(--sky); }
+.alert-warn { background: var(--yellow-light); color: #7a6f00; border: 1px solid #f5e400; border-left: 4px solid var(--yellow); }
+
+/* Badge */
+.badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-leader { background: var(--yellow-light); color: #7a6f00; border: 1px solid var(--yellow); }
+.badge-m1 { background: var(--sky-light); color: #005f80; border: 1px solid var(--sky); }
+.badge-m2 { background: #f3e5f5; color: var(--purple); border: 1px solid #ce93d8; }
+
+/* Member block */
+.member-block { border: 1.5px solid #e5e5f0; border-radius: 10px; padding: 14px; margin-bottom: 12px; background: #fafafe; }
+.member-block-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+
+/* Quiz */
+.quiz-q { background: #fafafe; border-radius: 10px; padding: 15px; margin-bottom: 11px; border: 1.5px solid #e5e5f0; }
+.quiz-q .qtype { font-size: 10px; color: #888; margin-bottom: 5px; font-weight: 700; text-transform: uppercase; }
+.quiz-q .qtext { font-size: 13px; font-weight: 600; margin-bottom: 11px; line-height: 1.55; color: var(--text); }
+.option { display: flex; align-items: flex-start; gap: 9px; padding: 9px 12px; border: 1.5px solid #e0e0ea; border-radius: 7px; cursor: pointer; margin-bottom: 6px; font-size: 13px; line-height: 1.45; transition: all 0.15s; background: white; }
+.option:hover { border-color: var(--navy); background: #f0f0f8; }
+.option.selected { border-color: var(--navy); background: #eef0f8; }
+.option.correct { border-color: var(--teal) !important; background: var(--teal-light) !important; }
+.option.wrong { border-color: #e53935 !important; background: #fff0f0 !important; }
+.option input[type=radio], .option input[type=checkbox] { margin-top: 2px; flex-shrink: 0; pointer-events: none; width: 14px; height: 14px; accent-color: var(--navy); }
+.option span { flex: 1; }
+
+/* Score */
+.score-result { border-radius: 12px; padding: 22px; text-align: center; margin: 16px 0; border: 2px solid; }
+.score-result.pass { border-color: var(--teal); background: var(--teal-light); }
+.score-result.fail { border-color: var(--orange); background: var(--orange-light); }
+.score-big { font-size: 56px; font-weight: 800; margin: 10px 0 4px; }
+.score-big.pass { color: var(--teal); }
+.score-big.fail { color: var(--orange); }
+
+/* Equipment */
+.equipment-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; background: #fafafe; border-radius: 8px; border: 1.5px solid #e0e0ea; margin-bottom: 7px; cursor: pointer; transition: all 0.15s; }
+.equipment-item:hover { border-color: var(--navy); }
+.equipment-item.checked { border-color: var(--navy); background: #eef0f8; }
+.equipment-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; pointer-events: none; accent-color: var(--navy); }
+.equipment-item label { cursor: pointer; font-weight: 500; font-size: 13px; margin: 0; pointer-events: none; flex: 1; }
+
+/* Date picker */
+.date-hint { font-size: 12px; color: var(--sky); font-weight: 600; margin-bottom: 8px; padding: 7px 11px; background: var(--sky-light); border-radius: 6px; border-left: 3px solid var(--sky); }
+input[type="date"] { cursor: pointer; }
+.return-info { background: var(--teal-light); border: 1.5px solid var(--teal); border-radius: 8px; padding: 12px 14px; margin-top: 10px; font-size: 13px; line-height: 1.7; }
+.return-info strong { color: var(--teal); }
+
+/* Regulations */
+.regs-box { background: #fafafe; border: 1.5px solid #dde; border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+.regs-box h3 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 11px; padding-bottom: 8px; border-bottom: 1px solid #e5e5f0; }
+.regs-box ol { padding-left: 16px; }
+.regs-box ol li { font-size: 12px; line-height: 1.6; margin-bottom: 8px; color: #333; }
+.regs-box ol li .cn { color: #888; font-size: 11px; margin-top: 1px; display: block; }
+.regs-penalty { background: #fff8f5; border-color: var(--orange); }
+.regs-penalty h3 { color: var(--orange); }
+.regs-agree { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--yellow-light); border: 1.5px solid var(--yellow); border-radius: 8px; margin: 12px 0; cursor: pointer; }
+.regs-agree input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; pointer-events: none; accent-color: var(--navy); }
+.regs-agree span { font-size: 12px; font-weight: 600; color: #7a6f00; line-height: 1.5; }
+
+/* Summary */
+.summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f8; font-size: 13px; }
+.summary-row:last-child { border-bottom: none; }
+.summary-row span:first-child { color: #888; }
+.summary-row span:last-child { font-weight: 600; text-align: right; max-width: 60%; }
+
+/* Lookup */
+.lookup-card { background: #fafafe; border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1.5px solid #e5e5f0; }
+.lookup-card h4 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.lookup-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 12px; gap: 8px; }
+.lookup-row:last-child { border-bottom: none; }
+.lookup-row span:first-child { color: #888; flex-shrink: 0; }
+.lookup-row span:last-child { font-weight: 600; text-align: right; }
+
+/* Others input */
+.others-input { margin-top: 7px; display: none; }
+.others-input.show { display: block; }
+
+/* Spinner */
+.spinner { width: 15px; height: 15px; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.done-banner { background: var(--teal-light); border: 1.5px solid var(--teal); border-radius: 10px; padding: 20px; text-align: center; }
+.done-banner h3 { color: var(--teal); font-size: 15px; margin-bottom: 6px; }
+.done-banner p { color: #00565a; font-size: 13px; line-height: 1.5; }
+
+@media (max-width: 500px) {
+  .field-2 { grid-template-columns: 1fr; }
+  .tab-btn { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"></div>
+  <div>
+    <h1>DMC Equipment Loan System</h1>
+    <p>Digital Media Centre · Xi'an Jiaotong-Liverpool University</p>
+  </div>
+</header>
+<div class="container">
+
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab1" onclick="switchTab(1)">Step 1<br><small>Group Reg.</small><span class="tab-status" id="tab1-status">Not done</span></button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Step 2<br><small>Quiz</small><span class="tab-status" id="tab2-status">Not done</span></button>
+    <button class="tab-btn" id="tab3" onclick="switchTab(3)">Step 3<br><small>Apply</small><span class="tab-status" id="tab3-status">Not done</span></button>
+    <button class="tab-btn" id="tab4" onclick="switchTab(4)">🔍 My Info<span class="tab-status"> </span></button>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="panel-1">
+    <div class="card accent-navy" id="card-email-1">
+      <h2>Step 1 — Group Registration / 小组注册</h2>
+      <p class="subtitle"><strong>Group Leader only.</strong> Each person can only be in one group.<br>仅需<strong>组长</strong>填写，每人只能加入一个小组。</p>
+      <div class="alert alert-info">Already registered? Go to Step 2 or Step 3 directly. / 已完成组队？可直接进行步骤二或三。</div>
+      <div class="alert alert-warn">⚠️ Your email is our primary way to contact you. Please make sure it is entered correctly — type it twice, do not paste.<br>邮箱是我们联系你的第一方式，请务必仔细核实填写正确——请手动输入两次，不要粘贴。</div>
+      <div class="field"><label>Group Leader Email / 组长邮箱 <span class="req">*</span></label><input type="email" id="s1-email" placeholder="your@email.com" onpaste="return false;"></div>
+      <div class="field"><label>Confirm Email / 再次输入邮箱 <span class="req">*</span></label><input type="email" id="s1-email-confirm" placeholder="your@email.com" onpaste="return false;"></div>
+      <div id="s1-email-error"></div>
+      <button class="btn btn-primary" onclick="s1SubmitEmail()"><span id="s1-send-text">Continue / 继续</span><span id="s1-send-spinner" style="display:none"><span class="spinner"></span></span></button>
+    </div>
+
+
+    <div class="card accent-navy" id="card-team-form" style="display:none">
+      <h2>Group Information / 小组信息</h2>
+      <p class="subtitle">All fields are required. / 所有字段均为必填。</p>
+      <div id="s1-team-error"></div>
+      <div class="field">
+        <label>Module / 课程 <span class="req">*</span></label>
+        <select id="s1-module" onchange="handleModuleChange()">
+          <option value="">-- Select / 选择 --</option>
+          <option value="COM269">COM269</option>
+          <option value="COM335">COM335</option>
+          <option value="COM408">COM408</option>
+          <option value="COM154">COM154</option>
+          <option value="others">Others / 其他</option>
+        </select>
+        <div class="others-input" id="s1-module-other-wrap"><input type="text" id="s1-module-other" placeholder="Please specify / 请填写课程名称"></div>
+      </div>
+      <div class="field">
+        <label>Number of members / 成员数量 <span class="req">*</span></label>
+        <select id="s1-member-count" onchange="updateMemberBlocks()">
+          <option value="2">2 members / 2人</option>
+          <option value="3">3 members / 3人</option>
+        </select>
+      </div>
+
+      <div class="section-heading">Group Leader / 组长</div>
+      <div class="member-block">
+        <div class="member-block-header"><span class="badge badge-leader">Leader / 组长</span></div>
+        <div class="field-2">
+          <div class="field"><label>Student ID / 学号 <span class="req">*</span></label><input type="text" id="m0-sid" placeholder="e.g. 2112345"></div>
+          <div class="field"><label>Full Name (English/Pinyin) <span class="req">*</span></label><input type="text" id="m0-name" placeholder="e.g. Zhang San"></div>
+        </div>
+        <div class="field-2">
+          <div class="field"><label>Chinese Name / 中文名 <span class="req">*</span> <small style="font-weight:400;color:#aaa;">(none if N/A)</small></label><input type="text" id="m0-cname" placeholder="e.g. 张三 or none"></div>
+          <div class="field"><label>Email / 邮箱 <span class="req">*</span></label><input type="email" id="m0-email" readonly></div>
+        </div>
+        <div class="field"><label>Telephone / 电话 <span class="req">*</span></label><input type="tel" id="m0-phone" placeholder="e.g. 138xxxxxxxx"></div>
+      </div>
+
+      <div class="section-heading">Group Member 1 / 组员 1</div>
+      <div class="member-block">
+        <div class="member-block-header"><span class="badge badge-m1">Member 1 / 组员1</span></div>
+        <div class="field-2">
+          <div class="field"><label>Student ID / 学号 <span class="req">*</span></label><input type="text" id="m1-sid" placeholder="e.g. 2112346"></div>
+          <div class="field"><label>Full Name (English/Pinyin) <span class="req">*</span></label><input type="text" id="m1-name" placeholder="e.g. Li Si"></div>
+        </div>
+        <div class="field-2">
+          <div class="field"><label>Chinese Name / 中文名 <span class="req">*</span></label><input type="text" id="m1-cname" placeholder="e.g. 李四 or none"></div>
+          <div class="field"><label>Email / 邮箱 <span class="req">*</span></label><input type="email" id="m1-email" placeholder="member1@email.com"></div>
+        </div>
+        <div class="field"><label>Telephone / 电话 <span class="req">*</span></label><input type="tel" id="m1-phone" placeholder="e.g. 139xxxxxxxx"></div>
+      </div>
+
+      <div id="m2-section" style="display:none">
+        <div class="section-heading">Group Member 2 / 组员 2</div>
+        <div class="member-block">
+          <div class="member-block-header"><span class="badge badge-m2">Member 2 / 组员2</span></div>
+          <div class="field-2">
+            <div class="field"><label>Student ID / 学号 <span class="req">*</span></label><input type="text" id="m2-sid" placeholder="e.g. 2112347"></div>
+            <div class="field"><label>Full Name (English/Pinyin) <span class="req">*</span></label><input type="text" id="m2-name" placeholder="e.g. Wang Wu"></div>
+          </div>
+          <div class="field-2">
+            <div class="field"><label>Chinese Name / 中文名 <span class="req">*</span></label><input type="text" id="m2-cname" placeholder="e.g. 王五 or none"></div>
+            <div class="field"><label>Email / 邮箱 <span class="req">*</span></label><input type="email" id="m2-email" placeholder="member2@email.com"></div>
+          </div>
+          <div class="field"><label>Telephone / 电话 <span class="req">*</span></label><input type="tel" id="m2-phone" placeholder="e.g. 137xxxxxxxx"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="s1Submit()" style="margin-top:6px;"><span id="s1-submit-text">Complete Group Registration / 完成组队登记</span><span id="s1-submit-spinner" style="display:none"><span class="spinner"></span></span></button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="panel-2" style="display:none">
+    <div class="card accent-teal" id="card-quiz-intro">
+      <h2>Step 2 — Safety Quiz / 安全培训测验</h2>
+      <p class="subtitle">Each member completes this individually. Score 80+ to pass. 25 random questions.<br>每位组员需单独完成，80分及以上为通过，共25道随机题目。</p>
+      <div id="s2-intro-error"></div>
+      <div class="section-heading">Your Information / 填写个人信息</div>
+      <div class="field-2">
+        <div class="field"><label>Full Name / 英文全名 <span class="req">*</span></label><input type="text" id="s2-name" placeholder="e.g. Zhang San"></div>
+        <div class="field"><label>Student ID / 学号 <span class="req">*</span></label><input type="text" id="s2-sid" placeholder="e.g. 2112345"></div>
+      </div>
+      <div class="field"><label>Email / 邮箱 <span class="req">*</span></label><input type="email" id="s2-email" placeholder="your@email.com"></div>
+      <button class="btn btn-primary" onclick="s2StartQuiz()" style="margin-top:6px;"><span id="s2-start-text">Start Quiz / 开始测验</span><span id="s2-start-spinner" style="display:none"><span class="spinner"></span></span></button>
+    </div>
+    <div id="card-quiz-content" style="display:none"></div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="panel-3" style="display:none">
+    <div id="panel-3-content">
+      <div class="card accent-sky">
+        <h2>Step 3 — Equipment Application / 器材借用申请</h2>
+        <p class="subtitle">Select your module and group leader. The system will verify all members passed the quiz.<br>选择课程和组长，系统将核查全组成员是否完成测验。</p>
+        <div id="s3-select-error"></div>
+        <div class="field"><label>Module / 课程 <span class="req">*</span></label><select id="s3-module" onchange="s3LoadLeaders()"><option value="">-- Select Module / 选择课程 --</option></select></div>
+        <div class="field" id="s3-leader-field" style="display:none">
+          <label>Group Leader / 组长姓名 <span class="req">*</span></label>
+          <select id="s3-leader" onchange="document.getElementById('s3-sid-field').style.display=this.value?'':'none'"><option value="">-- Select Leader / 选择组长 --</option></select>
+        </div>
+        <div class="field" id="s3-sid-field" style="display:none">
+          <label>Group Leader's Student ID (verification) / 组长学号验证 <span class="req">*</span></label>
+          <input type="text" id="s3-leader-sid" placeholder="Enter leader's student ID / 输入组长学号以验证身份">
+        </div>
+        <button class="btn btn-primary" id="s3-find-btn" onclick="s3FindGroup()" style="display:none;margin-top:4px;"><span id="s3-find-text">Verify & Continue / 验证并继续</span><span id="s3-find-spinner" style="display:none"><span class="spinner"></span></span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY INFO -->
+  <div id="panel-4" style="display:none">
+    <div class="card accent-navy">
+      <h2>🔍 My Information / 我的信息查询</h2>
+      <p class="subtitle">Enter your student ID to view your group info, quiz records, and application status.<br>输入学号查询小组信息、测验记录和借用申请状态。</p>
+      <div class="field"><label>Student ID / 学号 <span class="req">*</span></label><input type="text" id="lookup-sid" placeholder="e.g. 2112345" onkeydown="if(event.key==='Enter')doLookup()"></div>
+      <div id="lookup-error"></div>
+      <button class="btn btn-primary" onclick="doLookup()"><span id="lookup-btn-text">Search / 查询</span><span id="lookup-btn-spinner" style="display:none"><span class="spinner"></span></span></button>
+    </div>
+    <div id="lookup-results"></div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL='https://kalboeaqcrscqtgvrusd.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthbGJvZWFxY3JzY3F0Z3ZydXNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NjkzMjUsImV4cCI6MjA5NjA0NTMyNX0.xQZ6y7kPXtDhtDVmUPgDwpbPBpgtHN94OBF974X8kLE';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// Settings loaded from DB — defaults used until loaded
+let CFG={
+  require_otp: true,
+  email_domain: '',
+  require_team_for_quiz: true,
+  quiz_max_attempts: 3,
+  loan_days_2: 6,
+  loan_days_3: 9,
+  equipment_list: ['Camera: Sony Alpha 7 III + 28-70 F3.5-5.6 Lens','Manfrotto Tripod','Sachtler Tripod','Godox LED 308 Lights Set','Rode Wireless Go Mics Set'],
+  step1_fields: {chinese_name: true, phone: true}
+};
+
+async function loadCFG(){
+  const{data}=await sb.from('system_settings').select('*');
+  (data||[]).forEach(row=>{
+    try{ CFG[row.key]=typeof row.value==='string'?JSON.parse(row.value):row.value; }catch{ CFG[row.key]=row.value; }
+  });
+}
+
+// Load settings on page load
+loadCFG();
+
+let s1Email='',s1MemberCount=2,s2Questions=[],s2Answers={},s2UserInfo={};
+let s3TeamId='',s3MemberCount=2;
+let selectedSlotId='',selectedBorrowDate='',selectedReturnDate='';
+
+function showErr(id,msg){const el=document.getElementById(id);if(el)el.innerHTML=msg?`<div class="alert alert-error">${msg}</div>`:''}
+function setLoading(base,on){const t=document.getElementById(base+'-text'),s=document.getElementById(base+'-spinner');if(t)t.style.display=on?'none':'';if(s)s.style.display=on?'':'none';const b=t&&t.closest('button');if(b)b.disabled=on;}
+function switchTab(n){[1,2,3,4].forEach(i=>{document.getElementById('panel-'+i).style.display=i===n?'':'none';document.getElementById('tab'+i).classList.toggle('active',i===n);});if(n===3)s3Init();}
+function handleModuleChange(){document.getElementById('s1-module-other-wrap').classList.toggle('show',document.getElementById('s1-module').value==='others');}
+function updateMemberBlocks(){s1MemberCount=parseInt(document.getElementById('s1-member-count').value);document.getElementById('m2-section').style.display=s1MemberCount===3?'':'none';}
+
+async function s1SubmitEmail(){
+  await loadCFG();
+  const email=document.getElementById('s1-email').value.trim().toLowerCase();
+  const confirmEmail=document.getElementById('s1-email-confirm').value.trim().toLowerCase();
+  showErr('s1-email-error','');
+  if(!email||!email.includes('@')||email.endsWith('@'))return showErr('s1-email-error','Please enter a valid email. / 请输入有效邮箱。');
+  if(email!==confirmEmail)return showErr('s1-email-error','The two emails do not match. Please check and re-enter. / 两次输入的邮箱不一致，请检查后重新输入。');
+  if(CFG.email_domain&&!email.endsWith('@'+CFG.email_domain))return showErr('s1-email-error',`Only @${CFG.email_domain} emails are allowed. / 只允许 @${CFG.email_domain} 邮箱。`);
+  setLoading('s1-send',true);
+  const{data:ex}=await sb.from('students').select('team_id').eq('email',email).maybeSingle();
+  if(ex&&ex.team_id){setLoading('s1-send',false);return showErr('s1-email-error','This email has already joined a group. / 该邮箱已加入一个小组。');}
+  s1Email=email;
+  document.getElementById('m0-email').value=email;
+  document.getElementById('card-email-1').style.display='none';
+  document.getElementById('card-team-form').style.display='';
+  setLoading('s1-send',false);
+}
+
+async function s1Submit(){
+  showErr('s1-team-error','');
+  let moduleVal=document.getElementById('s1-module').value;
+  if(!moduleVal)return showErr('s1-team-error','Please select a module. / 请选择课程。');
+  if(moduleVal==='others'){moduleVal=document.getElementById('s1-module-other').value.trim();if(!moduleVal)return showErr('s1-team-error','Please specify your module. / 请填写课程名称。');}
+  s1MemberCount=parseInt(document.getElementById('s1-member-count').value);
+  const requireCname=CFG.step1_fields?.chinese_name!==false;
+  const requirePhone=CFG.step1_fields?.phone!==false;
+  const members=[];
+  for(let i=0;i<s1MemberCount;i++){
+    const sid=document.getElementById(`m${i}-sid`).value.trim();
+    const name=document.getElementById(`m${i}-name`).value.trim();
+    const cname=requireCname?document.getElementById(`m${i}-cname`).value.trim():'none';
+    const email=document.getElementById(`m${i}-email`).value.trim().toLowerCase();
+    const phone=requirePhone?document.getElementById(`m${i}-phone`).value.trim():'';
+    if(!sid||!name||!email)return showErr('s1-team-error',`Student ID, name and email required for ${i===0?'leader':'member '+i}. / 学号、姓名和邮箱为必填。`);
+    if(requireCname&&!cname)return showErr('s1-team-error',`Chinese name required for ${i===0?'leader':'member '+i}. / 中文名为必填。`);
+    if(requirePhone&&!phone)return showErr('s1-team-error',`Phone required for ${i===0?'leader':'member '+i}. / 电话为必填。`);
+    if(!email.includes('@')||email.endsWith('@'))return showErr('s1-team-error',`Invalid email for ${i===0?'leader':'member '+i}. / 邮箱格式不正确。`);
+    members.push({sid,name,cname,email,phone});
+  }
+  const emails=members.map(m=>m.email);
+  if(new Set(emails).size!==emails.length)return showErr('s1-team-error','Duplicate emails. / 邮箱不可重复。');
+  const sids=members.map(m=>m.sid);
+  if(new Set(sids).size!==sids.length)return showErr('s1-team-error','Duplicate student IDs. / 学号不可重复。');
+  setLoading('s1-submit',true);
+  const{data:takenEmail}=await sb.from('students').select('email,team_id').in('email',emails);
+  const alreadyEmail=(takenEmail||[]).filter(s=>s.team_id);
+  if(alreadyEmail.length){setLoading('s1-submit',false);return showErr('s1-team-error','Already in a group: '+alreadyEmail.map(s=>s.email).join(', ')+' / 以下邮箱已在其他小组中。');}
+  const{data:takenSid}=await sb.from('students').select('student_id,team_id').in('student_id',sids);
+  const alreadySid=(takenSid||[]).filter(s=>s.team_id);
+  if(alreadySid.length){setLoading('s1-submit',false);return showErr('s1-team-error','Already in a group: '+alreadySid.map(s=>s.student_id).join(', ')+' / 以下学号已在其他小组中。');}
+  const{data:team,error:tErr}=await sb.from('teams').insert({team_name:moduleVal+'_'+members[0].name,module:moduleVal}).select().single();
+  if(tErr){setLoading('s1-submit',false);return showErr('s1-team-error',tErr.message);}
+  const rows=members.map((m,i)=>({email:m.email,name:m.name,chinese_name:m.cname,student_id:m.sid,phone:m.phone,team_id:team.id,quiz_passed:false,is_leader:i===0}));
+  const{error:sErr}=await sb.from('students').upsert(rows,{onConflict:'email'});
+  if(sErr){setLoading('s1-submit',false);return showErr('s1-team-error',sErr.message);}
+  setLoading('s1-submit',false);
+  document.getElementById('tab1-status').textContent='✓ Done';
+  document.getElementById('tab1-status').className='tab-status done';
+  document.getElementById('card-team-form').style.display='none';
+  document.getElementById('panel-1').innerHTML=`<div class="done-banner">
+    <div style="font-size:44px;margin-bottom:8px;">✅</div>
+    <h3>Group Registration Complete! / 组队登记完成！</h3>
+    <p>Module: <strong>${moduleVal}</strong><br>All members must now complete Step 2 (Quiz) individually.<br>所有组员需各自完成步骤二安全测验。</p>
+    <div style="margin-top:14px;background:white;border-radius:8px;padding:12px;text-align:left;">
+      ${members.map((m,i)=>`<div style="font-size:12px;padding:5px 0;border-bottom:1px solid #e0f2f1;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;"><span>${i===0?'👑':'👤'} <strong>${m.name}</strong> <span style="color:#aaa;">(${m.sid})</span></span><span style="color:#00827F;">${m.email}</span></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// STEP 2
+async function s2StartQuiz(){
+  await loadCFG();
+  const name=document.getElementById('s2-name').value.trim();
+  const sid=document.getElementById('s2-sid').value.trim();
+  const email=document.getElementById('s2-email').value.trim().toLowerCase();
+  showErr('s2-intro-error','');
+  if(!name||!sid||!email)return showErr('s2-intro-error','All fields required. / 请填写所有信息。');
+  if(!email.includes('@')||email.endsWith('@'))return showErr('s2-intro-error','Invalid email. / 邮箱格式不正确。');
+  setLoading('s2-start',true);
+  // Check if team registration required
+  const teamRequired = CFG.require_team_for_quiz === true || CFG.require_team_for_quiz === 'true' || CFG.require_team_for_quiz === 1;
+  if(teamRequired){
+    const{data:stu}=await sb.from('students').select('student_id,team_id').eq('student_id',sid).maybeSingle();
+    if(!stu||!stu.team_id){setLoading('s2-start',false);return showErr('s2-intro-error','Student ID not found in any group. Please complete Step 1 first. / 未找到该学号对应的小组，请先完成步骤一。');}
+  }
+  // Check already passed
+  const{data:prev}=await sb.from('quiz_attempts').select('passed,score').eq('student_id',sid).eq('passed',true).maybeSingle();
+  if(prev){setLoading('s2-start',false);document.getElementById('tab2-status').textContent='✓ Passed';document.getElementById('tab2-status').className='tab-status done';document.getElementById('s2-intro-error').innerHTML=`<div class="alert alert-success">✓ Student ID ${sid} has already passed the quiz (Score: ${prev.score}). / 该学号已通过测验。</div>`;return;}
+  // Check max attempts
+  const maxAttempts=parseInt(CFG.quiz_max_attempts)||0;
+  if(maxAttempts>0){
+    const{data:attempts}=await sb.from('quiz_attempts').select('id').eq('student_id',sid);
+    if((attempts||[]).length>=maxAttempts){setLoading('s2-start',false);return showErr('s2-intro-error',`You have reached the maximum number of quiz attempts (${maxAttempts}). Please contact the DMC administrator. / 已达最大测验次数（${maxAttempts}次），请联系管理员。`);}
+  }
+  const{data:allQ}=await sb.from('quiz_questions').select('*').order('order_num');
+  if(!allQ||!allQ.length){setLoading('s2-start',false);return showErr('s2-intro-error','Quiz not set up. Contact DMC. / 测验尚未配置。');}
+  const pick=(arr,n)=>arr.sort(()=>Math.random()-0.5).slice(0,n);
+  s2Questions=[...pick(allQ.filter(q=>q.type==='single'),10),...pick(allQ.filter(q=>q.type==='multi'),9),...pick(allQ.filter(q=>q.type==='truefalse'),6)].sort(()=>Math.random()-0.5);
+  s2Answers={};s2UserInfo={name,sid,email};
+  setLoading('s2-start',false);
+  document.getElementById('card-quiz-intro').style.display='none';
+  renderQuiz();
+}
+
+function renderQuiz(){
+  const typeLabel=t=>t==='single'?'Single / 单选':t==='multi'?'Multiple / 多选':'True or False / 判断';
+  const inputType=t=>(t==='single'||t==='truefalse')?'radio':'checkbox';
+  let html=`<div class="card accent-teal"><h2>Safety Quiz / 安全培训测验</h2><p class="subtitle">${s2Questions.length} questions · ${s2Questions.length*4} pts · <strong>Pass: 80pts</strong><br><small style="color:#888;">Submit anytime. Unanswered = 0 pts. / 可随时提交，未答计0分。</small></p>`;
+  s2Questions.forEach((q,i)=>{
+    html+=`<div class="quiz-q" id="qq-${q.id}"><div class="qtype">Q${i+1}/${s2Questions.length} · ${typeLabel(q.type)} · 4pts</div><div class="qtext">${q.question}</div>`;
+    q.options.forEach((opt,oi)=>{html+=`<label class="option" id="opt-${q.id}-${oi}"><input type="${inputType(q.type)}" name="q-${q.id}" value="${oi}" onchange="s2SelectOpt('${q.id}',${oi},'${q.type}',this)"><span>${String.fromCharCode(65+oi)}. ${opt}</span></label>`;});
+    html+=`</div>`;
+  });
+  html+=`<div id="quiz-result-area"></div><div id="s2-quiz-error"></div><button class="btn btn-primary" id="quiz-submit-btn" onclick="s2Submit()" style="margin-top:8px;"><span id="s2-submit-text">Submit Quiz / 提交答案</span><span id="s2-submit-spinner" style="display:none"><span class="spinner"></span></span></button></div>`;
+  document.getElementById('card-quiz-content').innerHTML=html;
+  document.getElementById('card-quiz-content').style.display='';
+}
+
+function s2SelectOpt(qid,oi,type,inputEl){
+  if(type==='single'||type==='truefalse'){s2Answers[qid]=[oi];s2Questions.find(q=>q.id===qid).options.forEach((_,i)=>{document.getElementById(`opt-${qid}-${i}`)?.classList.toggle('selected',i===oi);});}
+  else{if(!s2Answers[qid])s2Answers[qid]=[];if(inputEl.checked){if(!s2Answers[qid].includes(oi))s2Answers[qid].push(oi);}else{s2Answers[qid]=s2Answers[qid].filter(x=>x!==oi);}document.getElementById(`opt-${qid}-${oi}`)?.classList.toggle('selected',inputEl.checked);}
+}
+
+async function s2Submit(){
+  setLoading('s2-submit',true);
+  let score=0;
+  s2Questions.forEach(q=>{
+    const ua=(s2Answers[q.id]||[]).slice().sort().join(',');
+    const ca=q.correct_answers.slice().sort().join(',');
+    if(ua===ca)score+=4;
+    q.options.forEach((_,oi)=>{const el=document.getElementById(`opt-${q.id}-${oi}`);if(!el)return;el.classList.remove('selected');if(q.correct_answers.includes(oi))el.classList.add('correct');else if((s2Answers[q.id]||[]).includes(oi))el.classList.add('wrong');});
+  });
+  const passed=score>=80;
+  const{name,sid,email}=s2UserInfo;
+  await sb.from('quiz_attempts').insert({email,name,student_id:sid,passed,score});
+  if(passed)await sb.from('students').update({quiz_passed:true}).eq('student_id',sid);
+  setLoading('s2-submit',false);
+  const submitBtn=document.getElementById('quiz-submit-btn');
+  if(submitBtn)submitBtn.style.display='none';
+  const resultArea=document.getElementById('quiz-result-area');
+  resultArea.innerHTML=`<div class="score-result ${passed?'pass':'fail'}">
+    <div style="font-size:44px;">${passed?'🎉':'😔'}</div>
+    <div class="score-big ${passed?'pass':'fail'}">${score}</div>
+    <p style="font-size:15px;font-weight:700;color:${passed?'var(--teal)':'var(--orange)'};margin:6px 0;">${passed?'Passed! / 通过！':'Not passed — need 80+ / 未通过，需80分及以上'}</p>
+    <p style="font-size:12px;color:#888;">${s2Questions.length} questions · ${score}/${s2Questions.length*4} points</p>
+    ${passed?`<p style="font-size:13px;color:var(--teal);margin-top:8px;">✓ When all group members pass, the group leader can proceed to Step 3.<br>全组成员均通过后，组长可进行步骤三申请。</p>`:''}
+  </div>`;
+  resultArea.scrollIntoView({behavior:'smooth'});
+  if(passed){document.getElementById('tab2-status').textContent='✓ Passed';document.getElementById('tab2-status').className='tab-status done';}
+  else{const rb=document.createElement('button');rb.className='btn btn-secondary';rb.innerHTML='Retake Quiz / 重新作答';rb.onclick=()=>{s2Answers={};document.getElementById('card-quiz-intro').style.display='';document.getElementById('card-quiz-content').style.display='none';document.getElementById('card-quiz-content').innerHTML='';};resultArea.appendChild(rb);}
+}
+
+// STEP 3
+async function s3Init(){
+  const{data:teams}=await sb.from('teams').select('module').order('module');
+  const modules=[...new Set((teams||[]).map(t=>t.module).filter(Boolean))];
+  const sel=document.getElementById('s3-module');
+  sel.innerHTML='<option value="">-- Select Module / 选择课程 --</option>';
+  modules.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+}
+async function s3LoadLeaders(){
+  const module=document.getElementById('s3-module').value;
+  const lf=document.getElementById('s3-leader-field'),sf=document.getElementById('s3-sid-field'),fb=document.getElementById('s3-find-btn');
+  lf.style.display='none';sf.style.display='none';fb.style.display='none';
+  if(!module)return;
+  const{data:teams}=await sb.from('teams').select('id').eq('module',module);
+  if(!teams?.length)return;
+  const{data:leaders}=await sb.from('students').select('name,team_id,student_id').in('team_id',teams.map(t=>t.id)).eq('is_leader',true);
+  const sel=document.getElementById('s3-leader');
+  sel.innerHTML='<option value="">-- Select Leader / 选择组长 --</option>';
+  (leaders||[]).forEach(l=>{const o=document.createElement('option');o.value=l.team_id+'|'+l.student_id;o.textContent=l.name;sel.appendChild(o);});
+  lf.style.display='';fb.style.display='';
+}
+async function s3FindGroup(){
+  await loadCFG();
+  showErr('s3-select-error','');
+  const module=document.getElementById('s3-module').value;
+  const leaderVal=document.getElementById('s3-leader').value;
+  const inputSid=document.getElementById('s3-leader-sid').value.trim();
+  if(!module)return showErr('s3-select-error','Please select a module. / 请选择课程。');
+  if(!leaderVal)return showErr('s3-select-error','Please select a leader. / 请选择组长。');
+  if(!inputSid)return showErr('s3-select-error','Please enter your student ID. / 请输入学号。');
+  const[teamId,expectedSid]=leaderVal.split('|');
+  if(inputSid!==expectedSid)return showErr('s3-select-error','Student ID does not match. Please enter the group leader\'s student ID. / 学号不匹配，请输入正确的组长学号。');
+  setLoading('s3-find',true);
+  // Check blacklist
+  const{data:bl}=await sb.from('blacklist').select('*').eq('team_id',teamId).maybeSingle();
+  if(bl){
+    const isPermanent=bl.is_permanent;
+    const isActive=isPermanent||(bl.banned_until&&new Date(bl.banned_until)>new Date());
+    if(isActive){
+      setLoading('s3-find',false);
+      const untilStr=isPermanent?'permanently / 永久':` until ${new Date(bl.banned_until).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`;
+      return showErr('s3-select-error',`⛔ This group is blacklisted ${untilStr}. Reason: ${bl.reason||'—'}. Please contact the DMC administrator. / 该小组已被列入黑名单，无法申请借用设备，请联系管理员。`);
+    }
+  }
+  const{data:members}=await sb.from('students').select('name,email,student_id,quiz_passed,is_leader').eq('team_id',teamId);
+  if(!members?.length){setLoading('s3-find',false);return showErr('s3-select-error','Group not found. / 未找到该小组。');}
+  const notPassed=members.filter(m=>!m.quiz_passed);
+  if(notPassed.length){setLoading('s3-find',false);return showErr('s3-select-error',`The following members have not passed the quiz — complete Step 2 first:<br>以下成员尚未通过测验，请先完成步骤二：<br><strong>${notPassed.map(m=>`${m.name} (ID: ${m.student_id})`).join('<br>')}</strong>`);}
+  const{data:existing}=await sb.from('loan_applications').select('status').eq('team_id',teamId).in('status',['pending','approved','borrowed']);
+  if(existing?.length){setLoading('s3-find',false);return showErr('s3-select-error',`Your group already has an active application (${existing[0].status}). Contact DMC. / 你的小组已有一个进行中的申请。`);}
+  s3TeamId=teamId;s3MemberCount=members.length;
+  setLoading('s3-find',false);
+  renderApplicationForm(members,module);
+}
+
+async function renderApplicationForm(members,module){
+  const today=new Date().toISOString().slice(0,10);
+  const{data:slots}=await sb.from('loan_slots').select('*').eq('is_open',true).gte('slot_date',today).order('slot_date');
+  // Use settings for loan days
+  const loanDays=s3MemberCount===2?(parseInt(CFG.loan_days_2)||6):(parseInt(CFG.loan_days_3)||9);
+  // Use settings for equipment list
+  const equipList=Array.isArray(CFG.equipment_list)&&CFG.equipment_list.length?CFG.equipment_list:['Camera: Sony Alpha 7 III + 28-70 F3.5-5.6 Lens','Manfrotto Tripod','Sachtler Tripod','Godox LED 308 Lights Set','Rode Wireless Go Mics Set'];
+
+  let slotCounts={};
+  if(slots?.length){const{data:apps}=await sb.from('loan_applications').select('slot_id').in('slot_id',slots.map(s=>s.id)).in('status',['approved','borrowed']);(apps||[]).forEach(a=>{slotCounts[a.slot_id]=(slotCounts[a.slot_id]||0)+1;});}
+
+  // Build slot dropdown data — only include dates that aren't full
+  const slotMap={};
+  const availableDates=[];
+  (slots||[]).forEach(s=>{
+    const cnt=slotCounts[s.id]||0;
+    slotMap[s.slot_date]={id:s.id,max:s.max_loans,booked:cnt};
+    if(cnt<s.max_loans)availableDates.push(s.slot_date);
+  });
+
+  const equipHtml=equipList.map((e,i)=>`<div class="equipment-item" id="eq-wrap-${i}" onclick="toggleEquip(${i})"><input type="checkbox" id="eq-${i}" value="${e}"><label for="eq-${i}">${e}</label></div>`).join('');
+
+  const REGS=`<div class="regs-box"><h3>📋 Regulations / 器材管理规定</h3><ol>
+    <li>All reservations must be approved by module leader and DMC equipment officer.<br><span class="cn">所有器材必须经由任课老师以及媒体传播系设备负责人的认可方可外借。</span></li>
+    <li>Reservation must be made at least 1 workday before checkout.<br><span class="cn">必须在器材借出前至少提前一个工作日进行预订。</span></li>
+    <li>All reservation extensions require at least 24 hours advance notice.<br><span class="cn">如需延期归还，请至少提前24小时与工作人员沟通。</span></li>
+    <li>Students must present valid XJTLU ID card to check out equipment.<br><span class="cn">学生需出示有效校园卡领取器材。</span></li>
+    <li>Upon arrival, check all equipment and confirm all items are present and working.<br><span class="cn">领取时仔细检查，确认所有器材均已提供并可正常使用。</span></li>
+    <li>Booked equipment must not be given to other individuals.<br><span class="cn">不得将器材转借给他人。</span></li>
+    <li>If a problem arises, immediately notify staff. Do not attempt repairs.<br><span class="cn">如出现问题，立即反映给工作人员，严禁自行维修或拆卸。</span></li>
+    <li>Return all equipment at one time by the specified return date.<br><span class="cn">必须在应还日期一次性归还所有器材。</span></li>
+    <li>Travel outside Suzhou with DMC equipment must be declared on the Loan Agreement.<br><span class="cn">携带器材至苏州大市以外，必须在协议书上申报。</span></li>
+  </ol></div>`;
+  const PENALTIES=`<div class="regs-box regs-penalty"><h3>⚠️ PENALTIES / 处罚规定</h3><ol>
+    <li>Penalties include fines, repair/replacement charges, temporary or permanent loss of borrowing privileges.<br><span class="cn">处罚包括经济罚款、维修或更换费用，以及暂时或永久取消借用权限。</span></li>
+    <li>Penalties apply for: late return, unauthorised transfer, damage, loss, improper handling.<br><span class="cn">以下行为将受罚：逾期、转借、损坏、遗失、不当使用。</span></li>
+    <li><strong>Late Return:</strong> After 5pm on due date = late. 1 day late = 1 week hold. Repeated = permanent suspension.<br><span class="cn"><strong>逾期：</strong>超过应还日17:00为逾期。1天=禁借1周，重复逾期将永久取消权限。</span></li>
+    <li><strong>Negligent Damage/Loss:</strong> Borrower bears 100% repair/replacement cost.<br><span class="cn"><strong>过失损坏/遗失：</strong>借用人承担100%维修或置换费用。</span></li>
+    <li><strong>Payment &amp; Appeal:</strong> 7 calendar days to pay or appeal after notification.<br><span class="cn"><strong>赔付与申诉：</strong>收到通知后7个自然日内完成赔付或提交书面申诉。</span></li>
+  </ol></div>`;
+
+  document.getElementById('panel-3-content').innerHTML=`<div class="card accent-sky">
+    <h2>Step 3 — Equipment Application / 器材借用申请</h2>
+    <p class="subtitle">Module: <strong>${module}</strong> · ${s3MemberCount} members · Loan: <strong>${loanDays} days</strong> (borrow + return dates inclusive)</p>
+    <div class="alert alert-success">✓ All ${s3MemberCount} members have passed the quiz. / 全组成员均已通过测验。</div>
+    ${REGS}
+    <div class="field" style="margin-bottom:16px;"><label>Select Equipment / 选择器材</label>${equipHtml}</div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>Select Borrowing Date / 选择借用日期 <span class="req">*</span></label>
+      <div class="date-hint">⏰ Limited slots available — first come, first served. / 每个日期可借名额有限，先到先得。</div>
+      ${availableDates.length
+        ? `<select id="borrow-date-select" onchange="handleDateSelect(this.value,${loanDays},${JSON.stringify(slotMap).replace(/"/g,'&quot;')})">
+            <option value="">-- Select a date / 选择日期 --</option>
+            ${availableDates.map(d=>{const dt=new Date(d+'T00:00:00');return `<option value="${d}">${dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</option>`;}).join('')}
+          </select>`
+        : `<div class="alert alert-warn">No available dates. Check back later. / 暂无可借日期，请稍后查看。</div>`
+      }
+      <div id="return-date-display"></div>
+    </div>
+    <div class="field"><label>Purpose / Project Description / 用途说明 <span class="req">*</span></label><input type="text" id="app-purpose" placeholder="e.g. Final year project – short film / 例：毕设短片拍摄"></div>
+    ${PENALTIES}
+    <div class="regs-agree" onclick="toggleAgree()"><input type="checkbox" id="agree-check"><span>我已阅读并同意遵守以上规章制度及处罚规定。<br>I have read and agree to abide by the above regulations and penalties.</span></div>
+    <div id="s3-app-error"></div>
+    <button class="btn btn-primary" onclick="s3SubmitApp()"><span id="s3-app-text">Submit Application / 提交申请</span><span id="s3-app-spinner" style="display:none"><span class="spinner"></span></span></button>
+  </div>`;
+}
+
+function handleDateSelect(dateVal, loanDays, slotMap){
+  if(!dateVal){selectedSlotId='';selectedBorrowDate='';selectedReturnDate='';document.getElementById('return-date-display').innerHTML='';return;}
+  const slot=slotMap[dateVal];
+  if(!slot){document.getElementById('return-date-display').innerHTML='<div class="alert alert-warn">This date is not available. / 该日期不可用。</div>';return;}
+  selectedSlotId=slot.id;selectedBorrowDate=dateVal;
+  const d=new Date(dateVal+'T00:00:00');
+  d.setDate(d.getDate()+loanDays-1);
+  selectedReturnDate=d.toISOString().slice(0,10);
+  const fmt=dt=>new Date(dt+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('return-date-display').innerHTML=`<div class="return-info">
+    📅 <strong>Borrow / 借出：</strong>${fmt(dateVal)}<br>
+    📅 <strong>Return by / 归还截止：</strong>${fmt(selectedReturnDate)}<br>
+    <small style="color:#006966;">Equipment must be returned to DMC by 5:00 PM on the return date. / 须在归还日17:00前还至DMC。</small>
+  </div>`;
+}
+
+function toggleEquip(i){const cb=document.getElementById('eq-'+i);cb.checked=!cb.checked;document.getElementById('eq-wrap-'+i).classList.toggle('checked',cb.checked);}
+function toggleAgree(){const cb=document.getElementById('agree-check');cb.checked=!cb.checked;}
+
+async function s3SubmitApp(){
+  const equip=Array.from(document.querySelectorAll('input[id^="eq-"]:checked')).map(e=>e.value);
+  const purpose=document.getElementById('app-purpose').value.trim();
+  const agreed=document.getElementById('agree-check').checked;
+  showErr('s3-app-error','');
+  if(!equip.length)return showErr('s3-app-error','Please select at least one item. / 请至少选择一件器材。');
+  if(!selectedSlotId)return showErr('s3-app-error','Please select a borrowing date. / 请选择借用日期。');
+  if(!purpose)return showErr('s3-app-error','Please describe your project. / 请填写用途说明。');
+  if(!agreed)return showErr('s3-app-error','Please agree to the regulations. / 请先同意规章制度。');
+  setLoading('s3-app',true);
+  const{error}=await sb.from('loan_applications').insert({team_id:s3TeamId,applicant_email:'',slot_id:selectedSlotId,borrow_date:selectedBorrowDate,return_date:selectedReturnDate,status:'pending',equipment_list:equip,purpose});
+  setLoading('s3-app',false);
+  if(error)return showErr('s3-app-error','Error: '+error.message);
+  document.getElementById('tab3-status').textContent='✓ Submitted';
+  document.getElementById('tab3-status').className='tab-status done';
+  const fmt=dt=>new Date(dt+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('panel-3-content').innerHTML=`<div class="done-banner">
+    <div style="font-size:44px;margin-bottom:8px;">✅</div>
+    <h3>Application Submitted! / 申请已提交！</h3>
+    <p>Under review. You will be notified by email. / 申请审核中，结果将通过邮件通知。</p>
+    <div style="margin-top:14px;background:white;border-radius:8px;padding:12px;text-align:left;">
+      <div class="summary-row"><span>Borrow / 借出</span><span>${fmt(selectedBorrowDate)}</span></div>
+      <div class="summary-row"><span>Return / 归还</span><span>${fmt(selectedReturnDate)}</span></div>
+      <div class="summary-row"><span>Equipment</span><span>${equip.length} item(s)</span></div>
+      <div class="summary-row"><span>Status</span><span style="color:var(--orange);">Pending Review / 待审核</span></div>
+    </div>
+  </div>`;
+}
+
+// MY INFO
+async function doLookup(){
+  const sid=document.getElementById('lookup-sid').value.trim();
+  showErr('lookup-error','');
+  if(!sid)return showErr('lookup-error','Please enter your student ID. / 请输入学号。');
+  setLoading('lookup-btn',true);
+  const{data:stu}=await sb.from('students').select('*,teams(id,team_name,module)').eq('student_id',sid).maybeSingle();
+  if(!stu){setLoading('lookup-btn',false);return showErr('lookup-error','Student ID not found. Please complete Step 1 (Group Registration) first. / 未找到该学号，请先完成步骤一组队登记。');}
+  const teamId=stu.team_id;
+  const{data:members}=await sb.from('students').select('name,student_id,email,quiz_passed,is_leader').eq('team_id',teamId);
+  const sids=(members||[]).map(m=>m.student_id);
+  const{data:attempts}=await sb.from('quiz_attempts').select('student_id,passed,score,attempted_at').in('student_id',sids).order('attempted_at',{ascending:false});
+  const{data:app}=await sb.from('loan_applications').select('*').eq('team_id',teamId).order('created_at',{ascending:false}).limit(1).maybeSingle();
+  setLoading('lookup-btn',false);
+  const fmt=dt=>dt?new Date(dt+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'—';
+  const fmtTs=ts=>ts?new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  const statusColor={pending:'var(--orange)',approved:'var(--sky)',rejected:'#e53935',borrowed:'var(--purple)',returned:'var(--teal)'};
+  const statusLabel={pending:'Pending Review / 待审核',approved:'Approved / 已通过',rejected:'Rejected / 已拒绝',borrowed:'Borrowed / 借出中',returned:'Returned / 已归还'};
+
+  let html=`<div class="lookup-card">
+    <h4>👤 Your Info / 个人信息</h4>
+    <div class="lookup-row"><span>Name</span><span>${stu.name}${stu.chinese_name&&stu.chinese_name!=='none'?' ('+stu.chinese_name+')':''}</span></div>
+    <div class="lookup-row"><span>Student ID / 学号</span><span>${stu.student_id}</span></div>
+    <div class="lookup-row"><span>Email / 邮箱</span><span>${stu.email}</span></div>
+    <div class="lookup-row"><span>Role / 角色</span><span>${stu.is_leader?'👑 Group Leader / 组长':'👤 Member / 组员'}</span></div>
+    <div class="lookup-row"><span>Quiz / 测验</span><span style="color:${stu.quiz_passed?'var(--teal)':'#e53935'};font-weight:700;">${stu.quiz_passed?'✓ Passed / 已通过':'✗ Not passed / 未通过'}</span></div>
+    <div class="lookup-row"><span>Module / 课程</span><span>${stu.teams?.module||'—'}</span></div>
+  </div>
+  <div class="lookup-card">
+    <h4>👥 Group Members / 小组成员</h4>
+    ${(members||[]).map(m=>{
+      const latest=(attempts||[]).find(a=>a.student_id===m.student_id);
+      return `<div style="padding:8px 0;border-bottom:1px solid #e5e5f0;">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+          <span style="font-size:13px;font-weight:600;">${m.is_leader?'👑':'👤'} ${m.name} <span style="font-size:11px;color:#aaa;">(${m.student_id})</span></span>
+          <span style="font-size:11px;color:${m.quiz_passed?'var(--teal)':'#e53935'};font-weight:700;">${m.quiz_passed?'Quiz ✓':'Quiz ✗'}</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:2px;">${m.email}</div>
+        ${latest?`<div style="font-size:11px;color:#666;margin-top:2px;">Latest: ${latest.score} pts · ${latest.passed?'Passed':'Failed'} · ${fmtTs(latest.attempted_at)}</div>`:'<div style="font-size:11px;color:#aaa;margin-top:2px;">No quiz attempt yet</div>'}
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  if(app){
+    const equip=Array.isArray(app.equipment_list)?app.equipment_list:[];
+    html+=`<div class="lookup-card">
+      <h4>📋 Application / 借用申请</h4>
+      <div class="lookup-row"><span>Status / 状态</span><span style="color:${statusColor[app.status]||'#333'};font-weight:700;">${statusLabel[app.status]||app.status}</span></div>
+      <div class="lookup-row"><span>Borrow / 借出日期</span><span>${fmt(app.borrow_date)}</span></div>
+      <div class="lookup-row"><span>Return by / 归还截止</span><span>${fmt(app.return_date)}</span></div>
+      <div class="lookup-row"><span>Equipment / 器材</span><span>${equip.join('<br>')}</span></div>
+      <div class="lookup-row"><span>Purpose / 用途</span><span>${app.purpose||'—'}</span></div>
+      ${app.admin_note?`<div class="lookup-row"><span>Admin Note / 管理员备注</span><span style="color:var(--sky);font-weight:600;">${app.admin_note}</span></div>`:''}
+      <div class="lookup-row"><span>Submitted / 提交时间</span><span>${fmtTs(app.created_at)}</span></div>
+    </div>`;
+  } else {
+    html+=`<div class="lookup-card"><h4>📋 Application / 借用申请</h4><p style="font-size:13px;color:#aaa;">No application submitted yet. / 尚未提交借用申请。</p></div>`;
+  }
+  document.getElementById('lookup-results').innerHTML=html;
+}
+</script>
+</body>
+</html>
