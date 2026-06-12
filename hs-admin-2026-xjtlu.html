@@ -123,27 +123,50 @@ label{display:block;font-size:11px;font-weight:600;color:#444;margin-bottom:3px;
   <header><div class="hd"><div class="logo"></div><div><h1>DMC Admin</h1></div></div></header>
   <div class="login-wrap">
     <h2>Admin Login</h2>
-    <p style="margin-bottom:18px;">A one-time code will be sent to the admin email address.</p>
-    <div id="login-send-wrap">
-      <div id="login-err"></div>
-      <button class="btn btn-primary" onclick="adminSendOTP()" style="width:100%;padding:11px;font-size:13px;">
-        <span id="login-send-text">Send Login Code to Admin Email</span>
-        <span id="login-send-spinner" style="display:none"><span class="spinner"></span></span>
-      </button>
+    <p style="margin-bottom:14px;">Choose a login method.</p>
+    <div style="display:flex;gap:6px;margin-bottom:16px;background:#f0f0f8;border-radius:8px;padding:3px;">
+      <button class="btn btn-sm" id="login-tab-otp" onclick="switchLoginTab('otp')" style="flex:1;background:white;">📧 Email Code</button>
+      <button class="btn btn-sm" id="login-tab-pw" onclick="switchLoginTab('pw')" style="flex:1;background:transparent;">🔑 Password</button>
     </div>
-    <div id="login-otp-wrap" style="display:none;">
-      <p style="margin-bottom:12px;color:#444;">Enter the 6-digit code sent to your admin email.</p>
-      <div class="field">
-        <input type="text" id="login-otp-input" maxlength="6" placeholder="1 2 3 4 5 6"
-          style="font-size:26px;letter-spacing:10px;text-align:center;width:100%;"
-          onkeydown="if(event.key==='Enter')adminVerifyOTP()">
+
+    <!-- OTP login -->
+    <div id="login-method-otp">
+      <p style="margin-bottom:14px;">A one-time code will be sent to the admin email address.</p>
+      <div id="login-send-wrap">
+        <div id="login-err"></div>
+        <button class="btn btn-primary" onclick="adminSendOTP()" style="width:100%;padding:11px;font-size:13px;">
+          <span id="login-send-text">Send Login Code to Admin Email</span>
+          <span id="login-send-spinner" style="display:none"><span class="spinner"></span></span>
+        </button>
       </div>
-      <div id="login-otp-err"></div>
-      <button class="btn btn-primary" onclick="adminVerifyOTP()" style="width:100%;padding:11px;font-size:13px;">
-        <span id="login-verify-text">Verify & Log In</span>
-        <span id="login-verify-spinner" style="display:none"><span class="spinner"></span></span>
+      <div id="login-otp-wrap" style="display:none;">
+        <p style="margin-bottom:12px;color:#444;">Enter the 6-digit code sent to your admin email.</p>
+        <div class="field">
+          <input type="text" id="login-otp-input" maxlength="6" placeholder="1 2 3 4 5 6"
+            style="font-size:26px;letter-spacing:10px;text-align:center;width:100%;"
+            onkeydown="if(event.key==='Enter')adminVerifyOTP()">
+        </div>
+        <div id="login-otp-err"></div>
+        <button class="btn btn-primary" onclick="adminVerifyOTP()" style="width:100%;padding:11px;font-size:13px;">
+          <span id="login-verify-text">Verify & Log In</span>
+          <span id="login-verify-spinner" style="display:none"><span class="spinner"></span></span>
+        </button>
+        <button class="btn btn-returned" onclick="resetLoginForm()" style="width:100%;margin-top:8px;">← Back</button>
+      </div>
+    </div>
+
+    <!-- Password login -->
+    <div id="login-method-pw" style="display:none;">
+      <p style="margin-bottom:14px;">Enter the admin password.</p>
+      <div class="field">
+        <input type="password" id="login-pw-input" placeholder="Password"
+          style="width:100%;" onkeydown="if(event.key==='Enter')adminVerifyPassword()">
+      </div>
+      <div id="login-pw-err"></div>
+      <button class="btn btn-primary" onclick="adminVerifyPassword()" style="width:100%;padding:11px;font-size:13px;">
+        <span id="login-pw-text">Log In</span>
+        <span id="login-pw-spinner" style="display:none"><span class="spinner"></span></span>
       </button>
-      <button class="btn btn-returned" onclick="resetLoginForm()" style="width:100%;margin-top:8px;">← Back</button>
     </div>
   </div>
 </div>
@@ -385,7 +408,27 @@ function setLoadingBtn(base,on){
   if(t)t.style.display=on?'none':'';if(s)s.style.display=on?'':'none';
   const b=t&&t.closest('button');if(b)b.disabled=on;
 }
-function resetLoginForm(){
+function switchLoginTab(method){
+  document.getElementById('login-method-otp').style.display=method==='otp'?'':'none';
+  document.getElementById('login-method-pw').style.display=method==='pw'?'':'none';
+  document.getElementById('login-tab-otp').style.background=method==='otp'?'white':'transparent';
+  document.getElementById('login-tab-pw').style.background=method==='pw'?'white':'transparent';
+}
+async function adminVerifyPassword(){
+  const pw=document.getElementById('login-pw-input').value;
+  document.getElementById('login-pw-err').innerHTML='';
+  if(!pw){document.getElementById('login-pw-err').innerHTML='<div class="alert alert-error">Please enter the password.</div>';return;}
+  setLoadingBtn('login-pw',true);
+  const r=await fn({action:'verify_admin_password',password:pw});
+  setLoadingBtn('login-pw',false);
+  if(!r.valid){document.getElementById('login-pw-err').innerHTML=`<div class="alert alert-error">${r.reason||'Incorrect password.'}</div>`;return;}
+  adminToken=r.token;
+  sessionStorage.setItem('dmc_admin_token',adminToken);
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  loadAll();
+}
+
   document.getElementById('login-send-wrap').style.display='';
   document.getElementById('login-otp-wrap').style.display='none';
   document.getElementById('login-err').innerHTML='';
