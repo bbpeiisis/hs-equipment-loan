@@ -335,7 +335,17 @@ input[type="date"] { cursor: pointer; }
 <script>
 const SUPABASE_URL='https://kalboeaqcrscqtgvrusd.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthbGJvZWFxY3JzY3F0Z3ZydXNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NjkzMjUsImV4cCI6MjA5NjA0NTMyNX0.xQZ6y7kPXtDhtDVmUPgDwpbPBpgtHN94OBF974X8kLE';
+const LOOKUP_URL='https://kalboeaqcrscqtgvrusd.supabase.co/functions/v1/public-lookup';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+async function lk(body){
+  const r=await fetch(LOOKUP_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_KEY}`},
+    body:JSON.stringify(body)
+  });
+  return r.json();
+}
 
 // Settings loaded from DB — defaults used until loaded
 let CFG={
@@ -378,8 +388,8 @@ async function s1SubmitEmail(){
   if(email!==confirmEmail)return showErr('s1-email-error','The two emails do not match. Please check and re-enter. / 两次输入的邮箱不一致，请检查后重新输入。');
   if(CFG.email_domain&&!email.endsWith('@'+CFG.email_domain))return showErr('s1-email-error',`Only @${CFG.email_domain} emails are allowed. / 只允许 @${CFG.email_domain} 邮箱。`);
   setLoading('s1-send',true);
-  const{data:ex}=await sb.from('students').select('team_id').eq('email',email).maybeSingle();
-  if(ex&&ex.team_id){setLoading('s1-send',false);return showErr('s1-email-error','This email has already joined a group. / 该邮箱已加入一个小组。');}
+  const{taken}=await lk({action:'check_email_taken',email});
+  if(taken){setLoading('s1-send',false);return showErr('s1-email-error','This email has already joined a group. / 该邮箱已加入一个小组。');}
   s1Email=email;
   document.getElementById('m0-email').value=email;
   document.getElementById('card-email-1').style.display='none';
@@ -413,12 +423,9 @@ async function s1Submit(){
   const sids=members.map(m=>m.sid);
   if(new Set(sids).size!==sids.length)return showErr('s1-team-error','Duplicate student IDs. / 学号不可重复。');
   setLoading('s1-submit',true);
-  const{data:takenEmail}=await sb.from('students').select('email,team_id').in('email',emails);
-  const alreadyEmail=(takenEmail||[]).filter(s=>s.team_id);
-  if(alreadyEmail.length){setLoading('s1-submit',false);return showErr('s1-team-error','Already in a group: '+alreadyEmail.map(s=>s.email).join(', ')+' / 以下邮箱已在其他小组中。');}
-  const{data:takenSid}=await sb.from('students').select('student_id,team_id').in('student_id',sids);
-  const alreadySid=(takenSid||[]).filter(s=>s.team_id);
-  if(alreadySid.length){setLoading('s1-submit',false);return showErr('s1-team-error','Already in a group: '+alreadySid.map(s=>s.student_id).join(', ')+' / 以下学号已在其他小组中。');}
+  const{taken_emails,taken_sids}=await lk({action:'check_duplicates',emails,student_ids:sids});
+  if((taken_emails||[]).length){setLoading('s1-submit',false);return showErr('s1-team-error','Already in a group: '+taken_emails.join(', ')+' / 以下邮箱已在其他小组中。');}
+  if((taken_sids||[]).length){setLoading('s1-submit',false);return showErr('s1-team-error','Already in a group: '+taken_sids.join(', ')+' / 以下学号已在其他小组中。');}
   const{data:team,error:tErr}=await sb.from('teams').insert({team_name:moduleVal+'_'+members[0].name,module:moduleVal}).select().single();
   if(tErr){setLoading('s1-submit',false);return showErr('s1-team-error',tErr.message);}
   const rows=members.map((m,i)=>({email:m.email,name:m.name,chinese_name:m.cname,student_id:m.sid,phone:m.phone,team_id:team.id,quiz_passed:false,is_leader:i===0}));
@@ -451,8 +458,8 @@ async function s2StartQuiz(){
   // Check if team registration required
   const teamRequired = CFG.require_team_for_quiz === true || CFG.require_team_for_quiz === 'true' || CFG.require_team_for_quiz === 1;
   if(teamRequired){
-    const{data:stu}=await sb.from('students').select('student_id,team_id').eq('student_id',sid).maybeSingle();
-    if(!stu||!stu.team_id){setLoading('s2-start',false);return showErr('s2-intro-error','Student ID not found in any group. Please complete Step 1 first. / 未找到该学号对应的小组，请先完成步骤一。');}
+    const{registered}=await lk({action:'check_student_registered',student_id:sid});
+    if(!registered){setLoading('s2-start',false);return showErr('s2-intro-error','Student ID not found in any group. Please complete Step 1 first. / 未找到该学号对应的小组，请先完成步骤一。');}
   }
   // Check already passed
   const{data:prev}=await sb.from('quiz_attempts').select('passed,score').eq('student_id',sid).eq('passed',true).maybeSingle();
@@ -534,25 +541,21 @@ async function s3LoadLeaders(){
   const lf=document.getElementById('s3-leader-field'),sf=document.getElementById('s3-sid-field'),fb=document.getElementById('s3-find-btn');
   lf.style.display='none';sf.style.display='none';fb.style.display='none';
   if(!module)return;
-  const{data:teams}=await sb.from('teams').select('id').eq('module',module);
-  if(!teams?.length)return;
-  const{data:leaders}=await sb.from('students').select('name,team_id,student_id').in('team_id',teams.map(t=>t.id)).eq('is_leader',true);
+  const{leaders}=await lk({action:'get_leaders',module});
   const sel=document.getElementById('s3-leader');
   sel.innerHTML='<option value="">-- Select Leader / 选择组长 --</option>';
-  (leaders||[]).forEach(l=>{const o=document.createElement('option');o.value=l.team_id+'|'+l.student_id;o.textContent=l.name;sel.appendChild(o);});
+  (leaders||[]).forEach(l=>{const o=document.createElement('option');o.value=l.team_id;o.textContent=l.name;sel.appendChild(o);});
   lf.style.display='';fb.style.display='';
 }
 async function s3FindGroup(){
   await loadCFG();
   showErr('s3-select-error','');
   const module=document.getElementById('s3-module').value;
-  const leaderVal=document.getElementById('s3-leader').value;
+  const teamId=document.getElementById('s3-leader').value;
   const inputSid=document.getElementById('s3-leader-sid').value.trim();
   if(!module)return showErr('s3-select-error','Please select a module. / 请选择课程。');
-  if(!leaderVal)return showErr('s3-select-error','Please select a leader. / 请选择组长。');
+  if(!teamId)return showErr('s3-select-error','Please select a leader. / 请选择组长。');
   if(!inputSid)return showErr('s3-select-error','Please enter your student ID. / 请输入学号。');
-  const[teamId,expectedSid]=leaderVal.split('|');
-  if(inputSid!==expectedSid)return showErr('s3-select-error','Student ID does not match. Please enter the group leader\'s student ID. / 学号不匹配，请输入正确的组长学号。');
   setLoading('s3-find',true);
   // Check blacklist
   const{data:bl}=await sb.from('blacklist').select('*').eq('team_id',teamId).maybeSingle();
@@ -565,8 +568,11 @@ async function s3FindGroup(){
       return showErr('s3-select-error',`⛔ This group is blacklisted ${untilStr}. Reason: ${bl.reason||'—'}. Please contact the DMC administrator. / 该小组已被列入黑名单，无法申请借用设备，请联系管理员。`);
     }
   }
-  const{data:members}=await sb.from('students').select('name,email,student_id,quiz_passed,is_leader').eq('team_id',teamId);
-  if(!members?.length){setLoading('s3-find',false);return showErr('s3-select-error','Group not found. / 未找到该小组。');}
+  // Verify leader SID and get members via Edge Function
+  const lkRes=await lk({action:'get_team_members',team_id:teamId,input_sid:inputSid});
+  if(lkRes.error){setLoading('s3-find',false);return showErr('s3-select-error','Student ID does not match. Please enter the group leader\'s student ID. / 学号不匹配，请输入正确的组长学号。');}
+  const members=lkRes.members||[];
+  if(!members.length){setLoading('s3-find',false);return showErr('s3-select-error','Group not found. / 未找到该小组。');}
   const notPassed=members.filter(m=>!m.quiz_passed);
   if(notPassed.length){setLoading('s3-find',false);return showErr('s3-select-error',`The following members have not passed the quiz — complete Step 2 first:<br>以下成员尚未通过测验，请先完成步骤二：<br><strong>${notPassed.map(m=>`${m.name} (ID: ${m.student_id})`).join('<br>')}</strong>`);}
   const{data:existing}=await sb.from('loan_applications').select('status').eq('team_id',teamId).in('status',['pending','approved','borrowed']);
@@ -697,14 +703,10 @@ async function doLookup(){
   showErr('lookup-error','');
   if(!sid)return showErr('lookup-error','Please enter your student ID. / 请输入学号。');
   setLoading('lookup-btn',true);
-  const{data:stu}=await sb.from('students').select('*,teams(id,team_name,module)').eq('student_id',sid).maybeSingle();
-  if(!stu){setLoading('lookup-btn',false);return showErr('lookup-error','Student ID not found. Please complete Step 1 (Group Registration) first. / 未找到该学号，请先完成步骤一组队登记。');}
-  const teamId=stu.team_id;
-  const{data:members}=await sb.from('students').select('name,student_id,email,quiz_passed,is_leader').eq('team_id',teamId);
-  const sids=(members||[]).map(m=>m.student_id);
-  const{data:attempts}=await sb.from('quiz_attempts').select('student_id,passed,score,attempted_at').in('student_id',sids).order('attempted_at',{ascending:false});
-  const{data:app}=await sb.from('loan_applications').select('*').eq('team_id',teamId).order('created_at',{ascending:false}).limit(1).maybeSingle();
+  const res=await lk({action:'my_info_lookup',student_id:sid});
   setLoading('lookup-btn',false);
+  if(res.error){return showErr('lookup-error','Student ID not found. Please complete Step 1 (Group Registration) first. / 未找到该学号，请先完成步骤一组队登记。');}
+  const stu=res.student,members=res.members||[],attempts=res.attempts||[],app=res.application;
   const fmt=dt=>dt?new Date(dt+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'—';
   const fmtTs=ts=>ts?new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
   const statusColor={pending:'var(--orange)',approved:'var(--sky)',rejected:'#e53935',borrowed:'var(--purple)',returned:'var(--teal)'};
