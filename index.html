@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DMC Equipment Loan System</title>
+<title>HSS Equipment Loan System</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -181,8 +181,8 @@ input[type="date"] { cursor: pointer; }
 <header>
   <div class="logo"></div>
   <div>
-    <h1>DMC Equipment Loan System</h1>
-    <p>Digital Media Centre · Xi'an Jiaotong-Liverpool University</p>
+    <h1>HSS Equipment Loan System</h1>
+    <p>HSS · Xi'an Jiaotong-Liverpool University</p>
   </div>
 </header>
 <div class="container">
@@ -468,10 +468,10 @@ async function s2StartQuiz(){
   const maxAttempts=parseInt(CFG.quiz_max_attempts)||0;
   if(maxAttempts>0){
     const{data:attempts}=await sb.from('quiz_attempts').select('id').eq('student_id',sid);
-    if((attempts||[]).length>=maxAttempts){setLoading('s2-start',false);return showErr('s2-intro-error',`You have reached the maximum number of quiz attempts (${maxAttempts}). Please contact the DMC administrator. / 已达最大测验次数（${maxAttempts}次），请联系管理员。`);}
+    if((attempts||[]).length>=maxAttempts){setLoading('s2-start',false);return showErr('s2-intro-error',`You have reached the maximum number of quiz attempts (${maxAttempts}). Please contact the HSS equipment administrator. / 已达最大测验次数（${maxAttempts}次），请联系管理员。`);}
   }
   const{data:allQ}=await sb.from('quiz_questions').select('*').order('order_num');
-  if(!allQ||!allQ.length){setLoading('s2-start',false);return showErr('s2-intro-error','Quiz not set up. Contact DMC. / 测验尚未配置。');}
+  if(!allQ||!allQ.length){setLoading('s2-start',false);return showErr('s2-intro-error','Quiz not set up. Contact Admin. / 测验尚未配置。');}
   const pick=(arr,n)=>arr.sort(()=>Math.random()-0.5).slice(0,n);
   s2Questions=[...pick(allQ.filter(q=>q.type==='single'),10),...pick(allQ.filter(q=>q.type==='multi'),9),...pick(allQ.filter(q=>q.type==='truefalse'),6)].sort(()=>Math.random()-0.5);
   s2Answers={};s2UserInfo={name,sid,email};
@@ -565,7 +565,7 @@ async function s3FindGroup(){
     if(isActive){
       setLoading('s3-find',false);
       const untilStr=isPermanent?'permanently / 永久':` until ${new Date(bl.banned_until).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`;
-      return showErr('s3-select-error',`⛔ This group is blacklisted ${untilStr}. Reason: ${bl.reason||'—'}. Please contact the DMC administrator. / 该小组已被列入黑名单，无法申请借用设备，请联系管理员。`);
+      return showErr('s3-select-error',`⛔ This group is blacklisted ${untilStr}. Reason: ${bl.reason||'—'}. Please contact the HSS equipment administrator. / 该小组已被列入黑名单，无法申请借用设备，请联系管理员。`);
     }
   }
   // Verify leader SID and get members via Edge Function
@@ -576,7 +576,7 @@ async function s3FindGroup(){
   const notPassed=members.filter(m=>!m.quiz_passed);
   if(notPassed.length){setLoading('s3-find',false);return showErr('s3-select-error',`The following members have not passed the quiz — complete Step 2 first:<br>以下成员尚未通过测验，请先完成步骤二：<br><strong>${notPassed.map(m=>`${m.name} (ID: ${m.student_id})`).join('<br>')}</strong>`);}
   const{data:existing}=await sb.from('loan_applications').select('status').eq('team_id',teamId).in('status',['pending','approved','borrowed']);
-  if(existing?.length){setLoading('s3-find',false);return showErr('s3-select-error',`Your group already has an active application (${existing[0].status}). Contact DMC. / 你的小组已有一个进行中的申请。`);}
+  if(existing?.length){setLoading('s3-find',false);return showErr('s3-select-error',`Your group already has an active application (${existing[0].status}). Contact Admin. / 你的小组已有一个进行中的申请。`);}
   s3TeamId=teamId;s3MemberCount=members.length;
   setLoading('s3-find',false);
   renderApplicationForm(members,module);
