@@ -50,9 +50,7 @@ header p { font-size: 12px; opacity: 0.7; margin-top: 2px; }
 .tab-nav { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 3px; background: var(--gray); border-radius: 10px; padding: 3px; margin-bottom: 24px; }
 .tab-btn { padding: 9px 4px; border-radius: 7px; border: none; background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; color: #666; transition: all 0.2s; text-align: center; line-height: 1.35; }
 .tab-btn.active { background: var(--navy); color: white; box-shadow: 0 2px 6px rgba(27,42,107,0.3); }
-.tab-status { display: block; font-size: 10px; font-weight: 400; margin-top: 2px; color: #999; }
-.tab-btn.active .tab-status { color: rgba(255,255,255,0.7); }
-.tab-status.done { color: var(--teal) !important; }
+
 
 /* Cards */
 .card { background: white; border-radius: 12px; padding: 22px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(27,42,107,0.08); border-top: 3px solid var(--gray); }
@@ -182,16 +180,16 @@ input[type="date"] { cursor: pointer; }
   <div class="logo"></div>
   <div>
     <h1>HSS Equipment Loan System</h1>
-    <p>HSS · Xi'an Jiaotong-Liverpool University</p>
+    <p>Humanities and Social Sciences · Xi'an Jiaotong-Liverpool University</p>
   </div>
 </header>
 <div class="container">
 
   <div class="tab-nav">
-    <button class="tab-btn active" id="tab1" onclick="switchTab(1)">Step 1<br><small>Group Reg.</small><span class="tab-status" id="tab1-status">Not done</span></button>
-    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Step 2<br><small>Quiz</small><span class="tab-status" id="tab2-status">Not done</span></button>
-    <button class="tab-btn" id="tab3" onclick="switchTab(3)">Step 3<br><small>Apply</small><span class="tab-status" id="tab3-status">Not done</span></button>
-    <button class="tab-btn" id="tab4" onclick="switchTab(4)">🔍 My Info<span class="tab-status"> </span></button>
+    <button class="tab-btn active" id="tab1" onclick="switchTab(1)">Step 1<br><small>Group Reg.</small></button>
+    <button class="tab-btn" id="tab2" onclick="switchTab(2)">Step 2<br><small>Quiz</small></button>
+    <button class="tab-btn" id="tab3" onclick="switchTab(3)">Step 3<br><small>Apply</small></button>
+    <button class="tab-btn" id="tab4" onclick="switchTab(4)">🔍 My Info</button>
   </div>
 
   <!-- STEP 1 -->
@@ -432,8 +430,6 @@ async function s1Submit(){
   const{error:sErr}=await sb.from('students').upsert(rows,{onConflict:'email'});
   if(sErr){setLoading('s1-submit',false);return showErr('s1-team-error',sErr.message);}
   setLoading('s1-submit',false);
-  document.getElementById('tab1-status').textContent='✓ Done';
-  document.getElementById('tab1-status').className='tab-status done';
   document.getElementById('card-team-form').style.display='none';
   document.getElementById('panel-1').innerHTML=`<div class="done-banner">
     <div style="font-size:44px;margin-bottom:8px;">✅</div>
@@ -463,15 +459,15 @@ async function s2StartQuiz(){
   }
   // Check already passed
   const{data:prev}=await sb.from('quiz_attempts').select('passed,score').eq('student_id',sid).eq('passed',true).maybeSingle();
-  if(prev){setLoading('s2-start',false);document.getElementById('tab2-status').textContent='✓ Passed';document.getElementById('tab2-status').className='tab-status done';document.getElementById('s2-intro-error').innerHTML=`<div class="alert alert-success">✓ Student ID ${sid} has already passed the quiz (Score: ${prev.score}). / 该学号已通过测验。</div>`;return;}
+  if(prev){setLoading('s2-start',false);document.getElementById('s2-intro-error').innerHTML=`<div class="alert alert-success">✓ Student ID ${sid} has already passed the quiz (Score: ${prev.score}). / 该学号已通过测验。</div>`;return;}
   // Check max attempts
   const maxAttempts=parseInt(CFG.quiz_max_attempts)||0;
   if(maxAttempts>0){
     const{data:attempts}=await sb.from('quiz_attempts').select('id').eq('student_id',sid);
-    if((attempts||[]).length>=maxAttempts){setLoading('s2-start',false);return showErr('s2-intro-error',`You have reached the maximum number of quiz attempts (${maxAttempts}). Please contact the HSS equipment administrator. / 已达最大测验次数（${maxAttempts}次），请联系管理员。`);}
+    if((attempts||[]).length>=maxAttempts){setLoading('s2-start',false);return showErr('s2-intro-error',`You have reached the maximum number of quiz attempts (${maxAttempts}). Please contact the DMC administrator. / 已达最大测验次数（${maxAttempts}次），请联系管理员。`);}
   }
   const{data:allQ}=await sb.from('quiz_questions').select('*').order('order_num');
-  if(!allQ||!allQ.length){setLoading('s2-start',false);return showErr('s2-intro-error','Quiz not set up. Contact Admin. / 测验尚未配置。');}
+  if(!allQ||!allQ.length){setLoading('s2-start',false);return showErr('s2-intro-error','Quiz not set up. Contact DMC. / 测验尚未配置。');}
   const pick=(arr,n)=>arr.sort(()=>Math.random()-0.5).slice(0,n);
   s2Questions=[...pick(allQ.filter(q=>q.type==='single'),10),...pick(allQ.filter(q=>q.type==='multi'),9),...pick(allQ.filter(q=>q.type==='truefalse'),6)].sort(()=>Math.random()-0.5);
   s2Answers={};s2UserInfo={name,sid,email};
@@ -524,7 +520,7 @@ async function s2Submit(){
     ${passed?`<p style="font-size:13px;color:var(--teal);margin-top:8px;">✓ When all group members pass, the group leader can proceed to Step 3.<br>全组成员均通过后，组长可进行步骤三申请。</p>`:''}
   </div>`;
   resultArea.scrollIntoView({behavior:'smooth'});
-  if(passed){document.getElementById('tab2-status').textContent='✓ Passed';document.getElementById('tab2-status').className='tab-status done';}
+  if(passed){}
   else{const rb=document.createElement('button');rb.className='btn btn-secondary';rb.innerHTML='Retake Quiz / 重新作答';rb.onclick=()=>{s2Answers={};document.getElementById('card-quiz-intro').style.display='';document.getElementById('card-quiz-content').style.display='none';document.getElementById('card-quiz-content').innerHTML='';};resultArea.appendChild(rb);}
 }
 
@@ -565,7 +561,7 @@ async function s3FindGroup(){
     if(isActive){
       setLoading('s3-find',false);
       const untilStr=isPermanent?'permanently / 永久':` until ${new Date(bl.banned_until).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`;
-      return showErr('s3-select-error',`⛔ This group is blacklisted ${untilStr}. Reason: ${bl.reason||'—'}. Please contact the HSS equipment administrator. / 该小组已被列入黑名单，无法申请借用设备，请联系管理员。`);
+      return showErr('s3-select-error',`⛔ This group is blacklisted ${untilStr}. Reason: ${bl.reason||'—'}. Please contact the DMC administrator. / 该小组已被列入黑名单，无法申请借用设备，请联系管理员。`);
     }
   }
   // Verify leader SID and get members via Edge Function
@@ -576,7 +572,7 @@ async function s3FindGroup(){
   const notPassed=members.filter(m=>!m.quiz_passed);
   if(notPassed.length){setLoading('s3-find',false);return showErr('s3-select-error',`The following members have not passed the quiz — complete Step 2 first:<br>以下成员尚未通过测验，请先完成步骤二：<br><strong>${notPassed.map(m=>`${m.name} (ID: ${m.student_id})`).join('<br>')}</strong>`);}
   const{data:existing}=await sb.from('loan_applications').select('status').eq('team_id',teamId).in('status',['pending','approved','borrowed']);
-  if(existing?.length){setLoading('s3-find',false);return showErr('s3-select-error',`Your group already has an active application (${existing[0].status}). Contact Admin. / 你的小组已有一个进行中的申请。`);}
+  if(existing?.length){setLoading('s3-find',false);return showErr('s3-select-error',`Your group already has an active application (${existing[0].status}). Contact DMC. / 你的小组已有一个进行中的申请。`);}
   s3TeamId=teamId;s3MemberCount=members.length;
   setLoading('s3-find',false);
   renderApplicationForm(members,module);
@@ -681,8 +677,6 @@ async function s3SubmitApp(){
   const{error}=await sb.from('loan_applications').insert({team_id:s3TeamId,applicant_email:'',slot_id:selectedSlotId,borrow_date:selectedBorrowDate,return_date:selectedReturnDate,status:'pending',equipment_list:equip,purpose});
   setLoading('s3-app',false);
   if(error)return showErr('s3-app-error','Error: '+error.message);
-  document.getElementById('tab3-status').textContent='✓ Submitted';
-  document.getElementById('tab3-status').className='tab-status done';
   const fmt=dt=>new Date(dt+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   document.getElementById('panel-3-content').innerHTML=`<div class="done-banner">
     <div style="font-size:44px;margin-bottom:8px;">✅</div>
