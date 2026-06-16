@@ -599,7 +599,11 @@ async function loadTasks(){
   const returnToday=apps.filter(a=>a.status==='borrowed'&&a.return_date===today);
   const overdue=apps.filter(a=>a.status==='borrowed'&&a.return_date<today);
   const teamIds=[...new Set(apps.map(a=>a.teams?.id).filter(Boolean))];
-  const{data:students}=await sb.from('students').select('team_id,name,email').in('team_id',teamIds);
+  let students=[];
+  if(teamIds.length){
+    const r=await fn({action:'admin_get_students_for_tasks',team_ids:teamIds});
+    students=r.students||[];
+  }
   function taskTable(list,empty){
     if(!list.length)return`<div class="empty-state">${empty}</div>`;
     return`<table><thead><tr><th>Module</th><th>Group</th><th>Borrow</th><th>Return</th><th>Members</th></tr></thead><tbody>
@@ -648,7 +652,12 @@ async function loadBlacklist(){
     <button class="btn btn-approve btn-sm" onclick="openModal('${a.id}','returned')">✅ Returned</button></div></div>`).join('');
   const{data:bl}=await sb.from('blacklist').select('*,teams(team_name,module)').order('created_at',{ascending:false});
   if(!bl?.length){document.getElementById('blacklist-content').innerHTML='<div class="empty-state">No groups blacklisted.</div>';return;}
-  const{data:blMembers}=await sb.from('students').select('team_id,name,student_id,email').in('team_id',bl.map(b=>b.team_id));
+  const blTeamIds=bl.map(b=>b.team_id);
+  let blMembers=[];
+  if(blTeamIds.length){
+    const r=await fn({action:'admin_get_students_for_blacklist',team_ids:blTeamIds});
+    blMembers=r.students||[];
+  }
   document.getElementById('blacklist-content').innerHTML=bl.map(b=>{
     const mems=(blMembers||[]).filter(m=>m.team_id===b.team_id);
     const isActive=b.is_permanent||(b.banned_until&&new Date(b.banned_until)>new Date());
@@ -782,11 +791,16 @@ async function loadQuizToDb(){
 // ── TEAMS ──
 async function loadTeams(){
   const{data:teams}=await sb.from('teams').select('id,team_name,module').order('module');
-  const{data:students}=await sb.from('students').select('*').order('is_leader',{ascending:false});
   const{data:apps}=await sb.from('loan_applications').select('team_id,status');
   const{data:bl}=await sb.from('blacklist').select('team_id');
   const bannedIds=new Set((bl||[]).map(b=>b.team_id));
-  allTeams=teams||[];allStudents=students||[];
+  allTeams=teams||[];
+  let allStudentsRaw=[];
+  if(allTeams.length){
+    const r=await fn({action:'admin_get_students_by_teams',team_ids:allTeams.map(t=>t.id)});
+    allStudentsRaw=r.students||[];
+  }
+  allStudents=allStudentsRaw;
   const modules=[...new Set(allTeams.map(t=>t.module).filter(Boolean))];
   const sel=document.getElementById('team-module-filter');
   sel.innerHTML='<option value="">All Modules</option>';
